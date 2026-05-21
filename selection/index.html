@@ -248,6 +248,33 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
     
@@ -257,10 +284,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -278,8 +305,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -619,10 +646,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -640,8 +667,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -783,6 +810,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
@@ -825,23 +854,14 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#algorithm-selection-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Algorithm Selection Guide
-      
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#regression" class="md-nav__link">
@@ -928,23 +948,14 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#algorithm-selection-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Algorithm Selection Guide
-      
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#regression" class="md-nav__link">
@@ -999,11 +1010,23 @@
   
 
 
-  <h1>Algorithm Selection Guide</h1>
-
-<h2 id="algorithm-selection-guide">Algorithm Selection Guide</h2>
+<h1 id="algorithm-selection-guide">Algorithm Selection Guide</h1>
 <p>Selecting the best algorithm to use for your specific case can be difficult, which is why this
 guide was assembled based on theory and empirical data to help you decide which one to use.</p>
+<p>Algorithm list:</p>
+<ul>
+<li><a href="../algorithms/dewsu/">DEWS-U</a> — soft blending via distance-weighted softmax. </li>
+<li><a href="../algorithms/dewsi/">DEWS-I</a> — Like DEWS-U but scores are inverse-distance weighted. General recommendation for regression.</li>
+<li><a href="../algorithms/dewst/">DEWS-T</a> — Like DEWS-I but fits a weighted trend line over neighbor scores.</li>
+<li><a href="../algorithms/dewsv/">DEWS-V</a> — Like DEWS-U but scores are variance-penalized.</li>
+<li><a href="../algorithms/dewsiv/">DEWS-IV</a> — Like DEWS-V but scores are also inverse-distance weighted.   </li>
+<li><a href="../algorithms/lwseu/">LWSE-U</a> — Per-sample NNLS weight estimation over the local neighbourhood.</li>
+<li><a href="../algorithms/lwsei/">LWSE-I</a> — Like LWSE-U but rows are inverse-distance weighted.   </li>
+<li><a href="../algorithms/knorau/">KNORA-U</a> — vote-count weighting. Safe default for classification.</li>
+<li><a href="../algorithms/knorae/">KNORA-E</a> — intersection-based. Best when models have clear regional dominance.</li>
+<li><a href="../algorithms/knoraiu/">KNORA-IU</a> — like KNORA-U with inverse-distance weighted votes.</li>
+<li><a href="../algorithms/ola/">OLA</a> — single model selection. Useful as a diagnostic tool.</li>
+</ul>
 <h2 id="regression">Regression</h2>
 <p>The entire DEWS family can be used for regression, as well as the LWSE family. KNORA algorithms can be used for 
 regression if the target value is classification-like, so it's usually contained within a certain range and it's discrete, 

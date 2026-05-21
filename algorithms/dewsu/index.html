@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://TikaaVo.github.io/deskit/algorithms/dewsu/">
       
       
-        <link rel="prev" href="../..">
+        <link rel="prev" href="../../usage/">
       
       
         <link rel="next" href="../dewsi/">
@@ -246,6 +246,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -259,10 +286,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -280,8 +307,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -723,10 +750,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -744,8 +771,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1048,6 +1075,7 @@ but not as well with hard predictions. However, for this purpose, DEWS-I is reco
 every models' scores over the K neighbors. Afterwards, it normalizes the average scores using min-max normalization and
 removes the models under a threshold. Finally, it takes the remaining models and creates weights with their scores using
 softmax with temperature.</p>
+<p>These weights can then be provided as output or combined with predictions to make a final ensembled answer.</p>
 <hr />
 <h2 id="parameters">Parameters</h2>
 <table>
@@ -1100,7 +1128,7 @@ softmax with temperature.</p>
 <td><code>preset</code></td>
 <td>str</td>
 <td><code>"balanced"</code></td>
-<td>ANN backend preset</td>
+<td>ANN backend preset. Options:    <code>"exact"</code>,<code>"balanced"</code>, <code>"fast"</code>, <code>"turbo"</code>, <code>"high_dim_balanced"</code>, <code>"high_dim_fast"</code></td>
 </tr>
 <tr>
 <td><code>finder</code></td>
@@ -1124,7 +1152,7 @@ from deskit.des.dewsu import DEWSU
 
 router = DEWSU(task=&quot;classification&quot;, metric=&quot;log_loss&quot;, mode=&quot;min&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 </code></pre>
 <hr />
 <h2 id="notes">Notes</h2>

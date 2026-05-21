@@ -246,6 +246,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -259,10 +286,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -280,8 +307,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -712,10 +739,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -733,8 +760,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1025,6 +1052,7 @@ them globally with min-max normalization. </p>
 <p>When <code>predict</code> is called, it finds the K nearest neighbors from the test point and uses the score matrix to average
 every models' scores over the K neighbors. Afterwards, it uses <code>argmax</code> and gives full weight to the model that had the highest
 accuracy.</p>
+<p>These weights can then be provided as output or combined with predictions to make a final ensembled answer.</p>
 <hr />
 <h2 id="parameters">Parameters</h2>
 <table>
@@ -1077,7 +1105,7 @@ accuracy.</p>
 <td><code>preset</code></td>
 <td>str</td>
 <td><code>"balanced"</code></td>
-<td>ANN backend preset</td>
+<td>ANN backend preset. Options:    <code>"exact"</code>,<code>"balanced"</code>, <code>"fast"</code>, <code>"turbo"</code>, <code>"high_dim_balanced"</code>, <code>"high_dim_fast"</code></td>
 </tr>
 <tr>
 <td><code>finder</code></td>
@@ -1093,7 +1121,7 @@ accuracy.</p>
 
 router = OLA(task=&quot;regression&quot;, metric=&quot;mae&quot;, mode=&quot;min&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 </code></pre>
 <hr />
 

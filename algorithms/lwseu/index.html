@@ -246,6 +246,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -259,10 +286,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -280,8 +307,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -723,10 +750,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -744,8 +771,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1052,6 +1079,7 @@ k and the amount of models, so if both of those are large it can add computation
 <p>When <code>predict</code> is called, it finds the K nearest neighbors from the test point. Afterwards, the local system is built
 and NNLS is solved on the system. Finally, the coefficients are divided by the sum to normalize them into weights. 
 If the solver returns all zeros, weights fall back to being uniform.</p>
+<p>These weights can then be provided as output or combined with predictions to make a final ensembled answer.</p>
 <hr />
 <h2 id="parameters">Parameters</h2>
 <table>
@@ -1080,7 +1108,13 @@ If the solver returns all zeros, weights fall back to being uniform.</p>
 <td><code>preset</code></td>
 <td>str</td>
 <td><code>"balanced"</code></td>
-<td>ANN backend preset. See <code>list_presets()</code>.</td>
+<td>ANN backend preset. Options:    <code>"exact"</code>,<code>"balanced"</code>, <code>"fast"</code>, <code>"turbo"</code>, <code>"high_dim_balanced"</code>, <code>"high_dim_fast"</code></td>
+</tr>
+<tr>
+<td><code>finder</code></td>
+<td>str</td>
+<td>—, optional</td>
+<td>Only if the preset is <code>"custom"</code>; Options: <code>"knn"</code>, <code>"faiss"</code>, <code>"annoy"</code>, <code>"hnsw"</code></td>
 </tr>
 </tbody>
 </table>
@@ -1094,14 +1128,14 @@ from deskit.des.lwseu import LWSEU
 
 router = LWSEU(task=&quot;regression&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 </code></pre>
 <pre><code class="language-python"># Classification
 from deskit.des.lwseu import LWSEU
 
 router = LWSEU(task=&quot;classification&quot;, k=10)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 </code></pre>
 <hr />
 <h2 id="notes">Notes</h2>
