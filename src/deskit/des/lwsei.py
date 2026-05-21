@@ -1,15 +1,16 @@
 """
 LWSE-I: Locally Weighted Stacking Ensemble (Inverse-distance).
 """
+from deskit.base.predictbase import PredictBase
 from deskit._config import make_finder
-from deskit.utils import to_numpy
 from scipy.optimize import nnls
 import numpy as np
 
 
-class LWSEI:
+class LWSEI(PredictBase):
     """
     LWSE-I: Locally Weighted Stacking Ensemble (Inverse-distance).
+
     Parameters
     ----------
     task : str
@@ -21,16 +22,15 @@ class LWSEI:
     """
 
     def __init__(self, task, k=10, preset='balanced', **kwargs):
-        self.task = task
-        self.k = k
+        self.task    = task
+        self.k       = k
         self._finder = make_finder(preset, k, **kwargs)
-        self.models = None
+        self.models  = None
 
-        self._val_preds = None   # (n_val, n_models) regression
-                                 # (n_val, n_models, n_classes) classification
-        self._y_val = None   # (n_val,) true values / class indices
-        self._y_onehot = None   # (n_val, n_classes) for classification
-        self._is_proba = None   # True if predictions are probability arrays
+        self._val_preds = None   # (n_val, n_models) or (n_val, n_models, n_classes)
+        self._y_val     = None   # (n_val,)
+        self._y_onehot  = None   # (n_val, n_classes) for classification
+        self._is_proba  = None
 
     def fit(self, features, y, preds_dict):
         """
@@ -48,13 +48,12 @@ class LWSEI:
             classification with probability output.
         """
         features = np.asarray(features, dtype=float)
-        y = np.asarray(y)
+        y        = np.asarray(y)
 
-        self.models = list(preds_dict.keys())
-        first = np.asarray(list(preds_dict.values())[0])
+        self.models    = list(preds_dict.keys())
+        first          = np.asarray(list(preds_dict.values())[0])
         self._is_proba = (first.ndim == 2)
 
-        # Stack predictions into a single matrix for fast neighbor indexing.
         if self._is_proba:
             self._val_preds = np.stack(
                 [np.asarray(preds_dict[m], dtype=float) for m in self.models],
@@ -72,69 +71,54 @@ class LWSEI:
         self._y_val = y
         self._finder.fit(features)
 
-    def predict(self, x, **kwargs):
+    def _weights_batch(self, x, temperature=None, **kwargs):
         """
-        Return per-sample model weights.
+        Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
+        Returns (batch, n_models) weight array.
 
-        Parameters
-        ----------
-        x : array-like, shape (n_features,) or (n_samples, n_features)
-
-        Returns
-        -------
-        dict or list of dict
-            Single sample: {model_name: weight}. Batch: list of such dicts.
+        NNLS is solved independently per sample (unavoidable); the rest of
+        the pipeline (dict formatting, ensembling) is handled vectorially
+        by PredictMixin.
         """
-        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
-        n_models = len(self.models)
-        uniform = np.full(n_models, 1.0 / n_models)
+        n_models   = len(self.models)
+        uniform    = np.full(n_models, 1.0 / n_models)
 
-        distances, indices = self._finder.kneighbors(x)   # (batch, k)
+        distances, indices = self._finder.kneighbors(x)              # (batch, k)
+        weights_out        = np.empty((batch_size, n_models))
 
-        results = []
         for b in range(batch_size):
-            idx = indices[b]                              # (k,)
-            dist = distances[b]                            # (k,)
+            idx  = indices[b]                                         # (k,)
+            dist = distances[b]                                       # (k,)
 
             # Inverse-distance weights
             inv_dist = 1.0 / np.maximum(dist, 1e-8)
-            w = inv_dist / inv_dist.sum()           # (k,)
-            sqrt_w = np.sqrt(w)                          # (k,)
+            w        = inv_dist / inv_dist.sum()                      # (k,)
+            sqrt_w   = np.sqrt(w)
 
             if self._is_proba:
-                # P: (k, n_models, n_classes) becomes (k*n_classes, n_models)
-                P = self._val_preds[idx]             # (k, n_models, n_classes)
+                P = self._val_preds[idx]                              # (k, n_models, n_classes)
                 k_, _, n_classes = P.shape
-                P_flat = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
-                y_flat = self._y_onehot[idx].reshape(k_ * n_classes)
-                sqrt_wt = np.repeat(sqrt_w, n_classes)     # (k*n_classes,)
-                P_wls = P_flat  * sqrt_wt[:, np.newaxis]
-                y_wls = y_flat  * sqrt_wt
+                P_flat  = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
+                y_flat  = self._y_onehot[idx].reshape(k_ * n_classes)
+                sqrt_wt = np.repeat(sqrt_w, n_classes)               # (k*n_classes,)
+                P_wls   = P_flat * sqrt_wt[:, np.newaxis]
+                y_wls   = y_flat * sqrt_wt
             else:
-                P = self._val_preds[idx]               # (k, n_models)
-                y_nbr = self._y_val[idx]                   # (k,)
-                P_wls = P     * sqrt_w[:, np.newaxis]
-                y_wls = y_nbr * sqrt_w
+                P      = self._val_preds[idx]                         # (k, n_models)
+                y_nbr  = self._y_val[idx]                             # (k,)
+                P_wls  = P     * sqrt_w[:, np.newaxis]
+                y_wls  = y_nbr * sqrt_w
 
-            # Solve
             lambda_ = 1e-6
-            P_aug = np.vstack([P_wls, lambda_ * np.eye(n_models)])
-            y_aug = np.concatenate([y_wls, np.zeros(n_models)])
+            P_aug   = np.vstack([P_wls, lambda_ * np.eye(n_models)])
+            y_aug   = np.concatenate([y_wls, np.zeros(n_models)])
             try:
                 coeffs, _ = nnls(P_aug, y_aug, maxiter=10 * n_models)
             except RuntimeError:
                 coeffs = uniform.copy()
 
-            # Normalize and fall back to uniform if degenerate.
             total = coeffs.sum()
-            if total > 1e-10:
-                coeffs = coeffs / total
-            else:
-                coeffs = uniform.copy()
+            weights_out[b] = coeffs / total if total > 1e-10 else uniform
 
-            results.append(dict(zip(self.models, coeffs)))
-
-        if batch_size == 1:
-            return results[0]
-        return results
+        return weights_out

@@ -102,9 +102,9 @@ except ImportError:
 SEED = 42
 W = 84      # print width
 
-K_REG = 20
+K_REG = 10
 K_CLF = 20
-TEMP_REG = 0.1
+TEMP_REG = 0.5
 TEMP_CLF = 1.0
 R2_THRESHOLD = 0.7
 

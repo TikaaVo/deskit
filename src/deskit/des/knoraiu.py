@@ -3,7 +3,6 @@ KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
 """
 from deskit.base.knnbase import KNNBase
 from deskit._config import make_finder, resolve_metric, prep_fit_inputs
-from deskit.utils import to_numpy
 import numpy as np
 
 
@@ -34,7 +33,7 @@ class KNORAIU(KNNBase):
                  threshold=0.5, preset='balanced', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
-        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
+        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)
         self.task = task
         self.threshold = threshold
         self._metric_name = metric_name
@@ -54,60 +53,36 @@ class KNORAIU(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def predict(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None):
         """
-        Return per-sample model weights.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_features,) or (n_samples, n_features)
-        temperature : ignored
-            Accepted for API compatibility; KNORA-IU uses inverse-distance
-            weighted vote counts, not softmax.
-        threshold : float, optional
-            Overrides the instance threshold for this call.
-
-        Returns
-        -------
-        dict or list of dict
-            Single sample: {model_name: weight}. Batch: list of such dicts.
-            Weights are proportional to distance-weighted vote sums and sum to 1.
+        Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
+        Returns (batch, n_models) weight array.
+        temperature is accepted for API compatibility but has no effect.
         """
         th = threshold if threshold is not None else self.threshold
 
-        x = np.atleast_2d(to_numpy(x))
-        batch_size = x.shape[0]
+        distances, indices = self.model.kneighbors(x)                # both (batch, k)
+        neighbor_scores    = self.matrix[indices]                     # (batch, k, n_models)
 
-        distances, indices = self.model.kneighbors(x)   # both (batch, k)
-        neighbor_scores = self.matrix[indices]        # (batch, k, n_models)
-
-        # Normalize per neighbor: best model = 1.0, worst = 0.0.
-        n_min = neighbor_scores.min(axis=2, keepdims=True)
-        n_max = neighbor_scores.max(axis=2, keepdims=True)
+        # Normalize per neighbor: best model = 1.0, worst = 0.0
+        n_min   = neighbor_scores.min(axis=2, keepdims=True)
+        n_max   = neighbor_scores.max(axis=2, keepdims=True)
         n_range = n_max - n_min
-        norm = np.where(n_range > 0,
+        norm    = np.where(n_range > 0,
                            (neighbor_scores - n_min) / n_range,
-                           1.0)   # tied → all equally competent
+                           1.0)
 
-        # competent[b, i, j] = True if model j passes the threshold on neighbor i.
-        competent = norm >= th                         # (batch, k, n_models)
+        competent = norm >= th                                        # (batch, k, n_models)
 
-        # Inverse distance weights
-        inv_dist = 1.0 / np.maximum(distances, 1e-8)  # (batch, k)
+        # Inverse-distance weighted votes
+        inv_dist = 1.0 / np.maximum(distances, 1e-8)                 # (batch, k)
+        votes    = (competent * inv_dist[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
+        total    = votes.sum(axis=1, keepdims=True)
 
-        # Weighted votes
-        votes = (competent * inv_dist[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
-        total = votes.sum(axis=1, keepdims=True)
-
-        # Normalize to weights that sum to 1.
-        # Uniform fallback if no model earned any votes.
         any_votes = total > 0
-        weights = np.where(
+        weights   = np.where(
             any_votes,
             votes / np.where(any_votes, total, 1.0),
             np.full_like(votes, 1.0 / len(self.models)),
         )
-
-        if batch_size == 1:
-            return dict(zip(self.models, weights[0]))
-        return [dict(zip(self.models, w)) for w in weights]
+        return weights

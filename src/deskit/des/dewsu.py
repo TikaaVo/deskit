@@ -3,7 +3,6 @@ DEWS-U: K-Nearest Neighbors with Distance-Weighted Softmax.
 """
 from deskit.base.knnbase import KNNBase
 from deskit._config import make_finder, resolve_metric, prep_fit_inputs
-from deskit.utils import to_numpy
 import numpy as np
 
 
@@ -28,7 +27,7 @@ class DEWSU(KNNBase):
         1.0 reduces to OLA behavior. Default: 0.5.
     temperature : float, optional
         Softmax sharpness. Lower = sharper routing toward the local best model;
-        higher = softer blending. If not set, defaults to 0.1 for regression
+        higher = softer blending. If not set, defaults to 0.5 for regression
         (min-metrics) and 1.0 for classification (max-metrics) at predict time.
     preset : str
         Neighbor search preset. Default: 'balanced'. See list_presets().
@@ -38,7 +37,7 @@ class DEWSU(KNNBase):
                  threshold=0.5, temperature=None, preset='balanced', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
-        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
+        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)
         self.task = task
         self.threshold = threshold
         self._temperature = temperature
@@ -63,44 +62,28 @@ class DEWSU(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def predict(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None):
         """
-        Return per-sample model weights.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_features,) or (n_samples, n_features)
-        temperature : float, optional
-            Overrides the instance temperature for this call.
-        threshold : float, optional
-            Overrides the instance threshold for this call.
-
-        Returns
-        -------
-        dict or list of dict
-            Single sample: {model_name: weight}. Batch: list of such dicts.
+        Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
+        Returns (batch, n_models) weight array.
         """
         t  = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x = np.atleast_2d(to_numpy(x))
-        batch_size = x.shape[0]
-
-        _, indices = self.model.kneighbors(x)
+        _, indices = self.model.kneighbors(x)                        # (batch, k)
 
         # Average each model's scores over the K neighbors
-        avg_scores = self.matrix[indices].mean(axis=1)
+        avg_scores = self.matrix[indices].mean(axis=1)               # (batch, n_models)
 
-        # Normalize per neighborhood
+        # Normalize per neighborhood: best = 1.0, worst = 0.0
         local_min = avg_scores.min(axis=1, keepdims=True)
         local_max = avg_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
-        # Zero out models below threshold.
-        # If nothing passes: go for single best
+        # Zero out models below threshold; fall back to single best if none pass
         if th > 0:
             gate = norm_scores >= th
             any_pass = gate.any(axis=1, keepdims=True)
@@ -116,7 +99,4 @@ class DEWSU(KNNBase):
         weights = np.where(total > 0,
                            exp_scores / np.where(total > 0, total, 1.0),
                            np.full_like(exp_scores, 1.0 / len(self.models)))
-
-        if batch_size == 1:
-            return dict(zip(self.models, weights[0]))
-        return [dict(zip(self.models, w)) for w in weights]
+        return weights

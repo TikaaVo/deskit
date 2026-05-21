@@ -26,6 +26,8 @@ neighbor distance is that model's vote total.
 The vote counts are then normalized by dividing them by the total amount of votes and turned into weights. If no model earned any votes at all, 
 uniform weights are assigned.
 
+These weights can then be provided as output or combined with predictions to make a final ensembled answer.
+
 ---
 
 ## Parameters
@@ -38,7 +40,7 @@ uniform weights are assigned.
 | `k`           | int | 10           | Number of neighbours                                                                                                                                            |
 | `threshold`   | float | 0.5          | Competence cutoff                                                                                                                                               |
 | `temperature` | float | 1.0          | Accepted for internal API consistency but not used                                                                                                                          |
-| `preset`      | str | `"balanced"` | ANN backend preset                                                                                                                                              |
+| `preset`      | str | `"balanced"` | ANN backend preset. Options:    `"exact"`,`"balanced"`, `"fast"`, `"turbo"`, `"high_dim_balanced"`, `"high_dim_fast"`                                                                                                                                              |
 | `finder`      | str | —, optional  | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
 
 ---
@@ -49,7 +51,7 @@ from deskit.des.knoraiu import KNORAIU
 
 router = KNORAIU(task="classification", metric="accuracy", mode="max", k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 ```
 
 ---

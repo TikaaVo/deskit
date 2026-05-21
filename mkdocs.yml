@@ -6,6 +6,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Usage Guide: usage.md
   - Algorithms:
     - DEWS-U: algorithms/dewsu.md
     - DEWS-I: algorithms/dewsi.md

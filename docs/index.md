@@ -1,5 +1,7 @@
 # deskit
 
+Usage guide: [usage guide](usage.md)
+
 deskit is a flexible, light, and easy-to-use ensembling library that implements
 Dynamic Ensemble Selection (DES) algorithms for ensembling multiple ML models
 on a singular dataset.

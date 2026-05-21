@@ -3,7 +3,6 @@ DEWS-V: Distance-weighted Ensemble with Softmax — Variance-penalised.
 """
 from deskit.base.knnbase import KNNBase
 from deskit._config import make_finder, resolve_metric, prep_fit_inputs
-from deskit.utils import to_numpy
 import numpy as np
 
 
@@ -35,7 +34,7 @@ class DEWSV(KNNBase):
         0.0 disables the gate; 1.0 reduces to OLA behaviour. Default: 0.5.
     temperature : float, optional
         Softmax sharpness. Lower = sharper routing toward the local best model.
-        Defaults to 0.1 for min-metrics, 1.0 otherwise.
+        Defaults to 0.5 for min-metrics, 1.0 otherwise.
     preset : str
         Neighbour search preset. Default: 'balanced'. See list_presets().
     """
@@ -48,7 +47,7 @@ class DEWSV(KNNBase):
         self._use_signed = metric_name in _SIGNED_METRICS
         self._metric_name = metric_name
 
-        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
+        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)
 
         self.task = task
         self.threshold = threshold
@@ -73,92 +72,68 @@ class DEWSV(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-        # Build signed residual matrix for variance (MAE/MSE only).
+        # Build signed residual matrix for variance (MAE/MSE only)
         if self._use_signed:
-            n_val = len(y)
+            n_val    = len(y)
             n_models = len(self.models)
             self._var_matrix = np.zeros((n_val, n_models))
             for j, name in enumerate(self.models):
                 preds = np.asarray(preds_dict[name])
                 self._var_matrix[:, j] = np.vectorize(_signed_residual)(y, preds)
 
-    def predict(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None):
         """
-        Return per-sample model weights.
-
-        Parameters
-        ----------
-        x : array-like, shape (n_features,) or (n_samples, n_features)
-        temperature : float, optional
-            Overrides the instance temperature for this call.
-        threshold : float, optional
-            Overrides the instance threshold for this call.
-
-        Returns
-        -------
-        dict or list of dict
-            Single sample: {model_name: weight}. Batch: list of such dicts.
+        Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
+        Returns (batch, n_models) weight array.
         """
-        t = temperature if temperature is not None else (
+        t  = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x = np.atleast_2d(to_numpy(x))
-        batch_size = x.shape[0]
+        _, indices = self.model.kneighbors(x)                        # (batch, k)
 
-        _, indices = self.model.kneighbors(x)              # (batch, k)
+        # Uniform average of each model's scores over K neighbors
+        neighbor_scores = self.matrix[indices]                        # (batch, k, n_models)
+        avg_scores      = neighbor_scores.mean(axis=1)                # (batch, n_models)
 
-        # Uniform average of each model's scores over K neighbors.
-        neighbor_scores = self.matrix[indices]              # (batch, k, n_models)
-        avg_scores = neighbor_scores.mean(axis=1)     # (batch, n_models)
-
-        # Variance of signed residuals (MAE/MSE) or score matrix.
-        if self._use_signed:
-            var_scores = self._var_matrix[indices]         # (batch, k, n_models)
-        else:
-            var_scores = neighbor_scores
-
-        local_var = var_scores.var(axis=1)                 # (batch, n_models)
+        # Variance of signed residuals (MAE/MSE) or score matrix
+        var_scores = self._var_matrix[indices] if self._use_signed else neighbor_scores
+        local_var  = var_scores.var(axis=1)                           # (batch, n_models)
 
         # Normalize scores to [0, 1]
-        local_min = avg_scores.min(axis=1, keepdims=True)
-        local_max = avg_scores.max(axis=1, keepdims=True)
+        local_min   = avg_scores.min(axis=1, keepdims=True)
+        local_max   = avg_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
         # Normalize variance to [0, 1]
-        var_min = local_var.min(axis=1, keepdims=True)
-        var_max = local_var.max(axis=1, keepdims=True)
+        var_min   = local_var.min(axis=1, keepdims=True)
+        var_max   = local_var.max(axis=1, keepdims=True)
         var_range = var_max - var_min
-        norm_var = (local_var - var_min) / np.where(var_range > 0, var_range, 1.0)
+        norm_var  = (local_var - var_min) / np.where(var_range > 0, var_range, 1.0)
 
-        # Penalise inconsistent models
+        # Penalise inconsistent models, then re-normalize
         norm_scores = norm_scores / (1.0 + norm_var)
-
-        # Re-normalize
-        local_min = norm_scores.min(axis=1, keepdims=True)
-        local_max = norm_scores.max(axis=1, keepdims=True)
+        local_min   = norm_scores.min(axis=1, keepdims=True)
+        local_max   = norm_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (norm_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
-        # Zero out models below threshold.
+        # Zero out models below threshold; fall back to single best if none pass
         if th > 0:
-            gate = norm_scores >= th
-            any_pass = gate.any(axis=1, keepdims=True)
-            gate = np.where(any_pass, gate, norm_scores == 1.0)
+            gate      = norm_scores >= th
+            any_pass  = gate.any(axis=1, keepdims=True)
+            gate      = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
 
-        # Softmax.
+        # Softmax
         max_scores = norm_scores.max(axis=1, keepdims=True)
         exp_scores = np.exp((norm_scores - max_scores) / t)
         if th > 0:
             exp_scores = exp_scores * gate
-        total = exp_scores.sum(axis=1, keepdims=True)
+        total   = exp_scores.sum(axis=1, keepdims=True)
         weights = np.where(total > 0,
                            exp_scores / np.where(total > 0, total, 1.0),
                            np.full_like(exp_scores, 1.0 / len(self.models)))
-
-        if batch_size == 1:
-            return dict(zip(self.models, weights[0]))
-        return [dict(zip(self.models, w)) for w in weights]
+        return weights

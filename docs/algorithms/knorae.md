@@ -25,6 +25,8 @@ exceeds the threshold for every neighbor case (for classification, this would me
 then those models survive and get equal weights, otherwise, k is decreased by 1 and the process is repeated. If the algorithm reaches
 `k=1` and still no model passes, it assigns uniform weights to all the models.
 
+These weights can then be provided as output or combined with predictions to make a final ensembled answer.
+
 ---
 
 ## Parameters
@@ -37,7 +39,7 @@ then those models survive and get equal weights, otherwise, k is decreased by 1 
 | `k`           | int | 10           | Number of neighbours                                                                                                                                            |
 | `threshold`   | float | 0.5          | Competence cutoff                                                                                                                                               |
 | `temperature` | float | 1.0          | Accepted for internal API consistency but not used                                                                                                              |
-| `preset`      | str | `"balanced"` | ANN backend preset                                                                                                                                              |
+| `preset`      | str | `"balanced"` | ANN backend preset. Options:    `"exact"`,`"balanced"`, `"fast"`, `"turbo"`, `"high_dim_balanced"`, `"high_dim_fast"`                                                                                                                                              |
 | `finder`      | str | —, optional  | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
 
 ---
@@ -48,7 +50,7 @@ from deskit.des.knorae import KNORAE
 
 router = KNORAE(task="classification", metric="accuracy", mode="max", k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 ```
 
 ---

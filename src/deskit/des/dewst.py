@@ -3,7 +3,6 @@ DEWS-T: Distance-weighted Ensemble with Softmax — Trend.
 """
 from deskit.base.knnbase import KNNBase
 from deskit._config import make_finder, resolve_metric, prep_fit_inputs
-from deskit.utils import to_numpy
 import numpy as np
 
 
@@ -17,6 +16,7 @@ def _signed_residual(y_true, y_pred):
 class DEWST(KNNBase):
     """
     DEWS-T: Distance-weighted Ensemble with Softmax — Trend.
+
     Parameters
     ----------
     task : str
@@ -34,10 +34,10 @@ class DEWST(KNNBase):
         0.0 disables the gate; 1.0 reduces to OLA behaviour. Default: 0.5.
     temperature : float, optional
         Softmax sharpness. Lower = sharper routing toward the local best model.
-        Defaults to 0.1 for min-metrics, 1.0 otherwise.
+        Defaults to 0.5 for min-metrics, 1.0 otherwise.
     r2_threshold : float
         Minimum weighted R² for the trend line to be trusted. Below this value
-        the sample falls back to DEWS-I scoring for that model. Default: 0.2.
+        the sample falls back to DEWS-I scoring for that model. Default: 0.7.
     preset : str
         Neighbour search preset. Default: 'balanced'. See list_presets().
     """
@@ -52,11 +52,11 @@ class DEWST(KNNBase):
         self._metric_name = metric_name
         self._convert = {'mae': np.abs, 'mse': np.square}.get(metric_name)
 
-        # For signed metrics, use signed residuals
+        # For signed metrics use signed residuals internally
         super().__init__(
             metric=_signed_residual if self._use_signed else metric_fn,
             mode='max' if self._use_signed else mode,
-            neighbor_finder=finder
+            neighbor_finder=finder, task=task
         )
 
         self._real_mode = mode
@@ -67,6 +67,7 @@ class DEWST(KNNBase):
 
     def fit(self, features, y, preds_dict):
         """
+        Fit the routing model on validation data.
 
         Parameters
         ----------
@@ -82,97 +83,78 @@ class DEWST(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def predict(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None):
         """
-
-        Parameters
-        ----------
-        x : array-like, shape (n_features,) or (n_samples, n_features)
-        temperature : float, optional
-            Overrides the instance temperature for this call.
-        threshold : float, optional
-            Overrides the instance threshold for this call.
-
-        Returns
-        -------
-        dict or list of dict
-            Single sample: {model_name: weight}. Batch: list of such dicts.
+        Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
+        Returns (batch, n_models) weight array.
         """
         t  = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
              (0.5 if self._real_mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x = np.atleast_2d(to_numpy(x))
-        batch_size = x.shape[0]
-
-        distances, indices = self.model.kneighbors(x)          # (batch, k)
+        distances, indices = self.model.kneighbors(x)               # (batch, k)
         k = distances.shape[1]
 
         # Inverse-distance weights
-        inv_dist = 1.0 / np.maximum(distances, 1e-8)         # (batch, k)
+        inv_dist   = 1.0 / np.maximum(distances, 1e-8)              # (batch, k)
         inv_dist_w = inv_dist / inv_dist.sum(axis=1, keepdims=True)
 
-        # Scores at each neighbour: (batch, k, n_models).
+        # Scores at each neighbour: (batch, k, n_models)
         neighbor_scores = self.matrix[indices]
 
-        # Weighted least squares trend
+        # Weighted least-squares trend — normalize distances to [0, 1]
         d_max  = distances.max(axis=1, keepdims=True)
-        d_norm = distances / np.where(d_max > 0, d_max, 1.0)   # (batch, k)
+        d_norm = distances / np.where(d_max > 0, d_max, 1.0)        # (batch, k)
 
-        # X^{T}WX: shape (batch, 2, 2)
-        W = inv_dist_w                                        # (batch, k)
-        a =  W.sum(axis=1)                                    # (batch,)
-        b = (W * d_norm).sum(axis=1)
+        # Build X^T W X components
+        W   = inv_dist_w                                             # (batch, k)
+        a   = W.sum(axis=1)                                          # (batch,)
+        b   = (W * d_norm).sum(axis=1)
         d_v = (W * d_norm ** 2).sum(axis=1)
-        det = a * d_v - b ** 2                                  # (batch,)
+        det = a * d_v - b ** 2                                       # (batch,)
         bad_det = np.abs(det) <= 1e-12
         det_safe = np.where(bad_det, 1.0, det)
 
-        # XᵀWy for all models: shape (batch, 2, n_models).
-        Wy = neighbor_scores * inv_dist_w[:, :, np.newaxis]    # (batch, k, n_models)
-        Wdy = Wy * d_norm[:, :, np.newaxis]
-        XtWy_0 = Wy.sum(axis=1)                                 # (batch, n_models)
-        XtWy_1 = Wdy.sum(axis=1)                                # (batch, n_models)
+        # X^T W y for all models: (batch, 2, n_models)
+        Wy   = neighbor_scores * inv_dist_w[:, :, np.newaxis]        # (batch, k, n_models)
+        Wdy  = Wy * d_norm[:, :, np.newaxis]
+        XtWy_0 = Wy.sum(axis=1)                                      # (batch, n_models)
+        XtWy_1 = Wdy.sum(axis=1)                                     # (batch, n_models)
 
-        # Closed-form 2×2 inverse applied.
-        # intercept B0
-        # slope     B1
+        # Closed-form 2×2 inverse
         intercept = (d_v[:, np.newaxis] * XtWy_0 -
                      b[:, np.newaxis]   * XtWy_1) / det_safe[:, np.newaxis]
-        slope = (a[:, np.newaxis]   * XtWy_1 -
+        slope     = (a[:, np.newaxis]   * XtWy_1 -
                      b[:, np.newaxis]   * XtWy_0) / det_safe[:, np.newaxis]
 
-        # Weighted R^2
-        y_hat = (intercept[:, np.newaxis, :] +
-                   slope[:, np.newaxis, :]     *
-                   d_norm[:, :, np.newaxis])                    # (batch, k, n_models)
-        y_wmean = XtWy_0                                        # weighted mean
+        # Weighted R²
+        y_hat  = (intercept[:, np.newaxis, :] +
+                  slope[:, np.newaxis, :] * d_norm[:, :, np.newaxis])  # (batch, k, n_models)
+        y_wmean = XtWy_0
         ss_res = (inv_dist_w[:, :, np.newaxis] *
-                   (neighbor_scores - y_hat) ** 2).sum(axis=1)
+                  (neighbor_scores - y_hat) ** 2).sum(axis=1)
         ss_tot = (inv_dist_w[:, :, np.newaxis] *
-                   (neighbor_scores - y_wmean[:, np.newaxis, :]) ** 2).sum(axis=1)
+                  (neighbor_scores - y_wmean[:, np.newaxis, :]) ** 2).sum(axis=1)
         with np.errstate(divide='ignore', invalid='ignore'):
             r2 = np.where(ss_tot > 1e-12, 1.0 - ss_res / ss_tot, 0.0)
-        # Bad determinant = fallback.
-        r2      = np.where(bad_det[:, np.newaxis], 0.0, r2)    # (batch, n_models)
+        r2 = np.where(bad_det[:, np.newaxis], 0.0, r2)              # (batch, n_models)
 
-        # DEWS-I fallback
+        # DEWS-I fallback scores
         if self._use_signed:
-            # Convert signed residuals back to metric
-            fallback_raw = self._convert(neighbor_scores)
-            dewsi_scores = -(fallback_raw * inv_dist_w[:, :, np.newaxis]).sum(axis=1)
+            fallback_raw  = self._convert(neighbor_scores)
+            dewsi_scores  = -(fallback_raw * inv_dist_w[:, :, np.newaxis]).sum(axis=1)
         else:
-            dewsi_scores = XtWy_0
+            dewsi_scores  = XtWy_0
 
-        # Convert trend intercept to routing scord
+        # Convert trend intercept to routing score
         if self._use_signed:
-            trend_scores = -self._convert(intercept)            # negate for min-routing
+            trend_scores = -self._convert(intercept)
         else:
             trend_scores = intercept
 
-        # Blend: trust trend where R² ≥ threshold, fall back otherwise.
-        use_trend = r2 >= self.r2_threshold
+        # Blend: trust trend where R² ≥ threshold, fall back otherwise
+        use_trend  = r2 >= self.r2_threshold
         avg_scores = np.where(use_trend, trend_scores, dewsi_scores)
 
         # Standard DEWS softmax
@@ -195,7 +177,4 @@ class DEWST(KNNBase):
         weights = np.where(total > 0,
                            exp_scores / np.where(total > 0, total, 1.0),
                            np.full_like(exp_scores, 1.0 / len(self.models)))
-
-        if batch_size == 1:
-            return dict(zip(self.models, weights[0]))
-        return [dict(zip(self.models, w)) for w in weights]
+        return weights

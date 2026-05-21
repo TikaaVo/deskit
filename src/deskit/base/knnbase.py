@@ -1,13 +1,18 @@
 from deskit.base.base import BaseRouter
+from deskit.base.predictbase import PredictBase
 import numpy as np
 
 
-class KNNBase(BaseRouter):
+class KNNBase(PredictBase, BaseRouter):
     """
     Base for KNN-based DES algorithms.
+
+    Inheriting PredictBase gives every subclass the public
+    predict() and predict_weights() API automatically.
+    Subclasses must implement _weights_batch().
     """
 
-    def __init__(self, metric, mode='max', neighbor_finder=None):
+    def __init__(self, metric, mode='max', neighbor_finder=None, task='classification'):
         """
         Parameters
         ----------
@@ -23,13 +28,14 @@ class KNNBase(BaseRouter):
         self.model           = neighbor_finder
         self.matrix          = None   # (n_val, n_models); higher is always better
         self.models          = None   # ordered list of model names
+        self.task = task
 
     def _compute_scores(self, y, preds):
         """
         Return a 1D array of per-sample metric scores.
 
         preds may be 1D (scalar predictions) or 2D (probability arrays, one
-        row per sample)
+        row per sample).
         """
         preds = np.asarray(preds)
         if preds.ndim == 2:

@@ -24,6 +24,8 @@ every models' scores over the K neighbors. Afterwards, it normalizes the average
 removes the models under a threshold. Finally, it takes the remaining models and creates weights with their scores using
 softmax with temperature.
 
+These weights can then be provided as output or combined with predictions to make a final ensembled answer.
+
 ---
 
 ## Parameters
@@ -36,7 +38,7 @@ softmax with temperature.
 | `k`           | int | 10                                    | Number of neighbours                                                                                                                                            |
 | `threshold`   | float | 0.5                                   | Competence cutoff                                                                                                                                               |
 | `temperature` | float | 0.5/1.0 for regression/classification | Defines how smooth the model blend is                                                                                                                           |
-| `preset`      | str | `"balanced"`                          | ANN backend preset                                                                                                                                              |
+| `preset`      | str | `"balanced"`                          | ANN backend preset. Options:    `"exact"`,`"balanced"`, `"fast"`, `"turbo"`, `"high_dim_balanced"`, `"high_dim_fast"`                                                                                                                                              |
 | `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
 
 ---
@@ -57,7 +59,7 @@ from deskit.des.dewsu import DEWSU
 
 router = DEWSU(task="classification", metric="log_loss", mode="min", k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 ```
 
 ---

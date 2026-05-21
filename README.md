@@ -1,5 +1,7 @@
 # deskit
 
+This is not a usage guide, but an overview of deskit. For a usage guide, see the [documentation](https://TikaaVo.github.io/deskit/usage)
+
 deskit is a flexible, lightweight, and easy-to-use ensembling library that implements
 Dynamic Ensemble Selection (DES) algorithms for ensembling multiple ML models
 on a given dataset. 
@@ -56,7 +58,7 @@ pip install hnswlib     # HNSW (best for high-dimensional data)
 
 ## Dependencies
 
-Python (>= 3.9)
+Python (>= 3.8)
 
 NumPy (>= 1.21)
 
@@ -64,10 +66,10 @@ NumPy (>= 1.21)
 
 ## Quick start
 
-For a more detailed understanding of how to use the library, consult the [documentation](https://TikaaVo.github.io/deskit/).
+For a more detailed understanding of how to use the library, consult the [usage guide](https://TikaaVo.github.io/deskit/usage).
 
 ```python
-from deskit.des.knorau  import KNORAU
+from deskit.des.knorau import KNORAU
 
 # 1. Train your models
 models = {"rf": rf, "xgb": xgb, "mlp": mlp}
@@ -81,17 +83,35 @@ val_preds = {name: m.predict_proba(X_val) for name, m in models.items()}
 router = KNORAU(task="classification", metric="accuracy", mode="max", k=20)
 router.fit(X_val, y_val, val_preds)
 
-# 4. Route test samples
+# 4. Get test predictions from your models
 test_preds = {name: m.predict_proba(X_test) for name, m in models.items()}
 
-for i, x in enumerate(X_test):
-    weights = router.predict(x, temperature=0.1)
-    # weights example: {"rf": 0.7, "xgb": 0.2, "mlp": 0.1}
-    prediction = sum(weights[n] * test_preds[n][i] for n in weights)
+# 5. Route and blend test samples instantly
+#    Returns final ensembled predictions for the entire batch
+#    Alternatively, predict_weights can be used to get an array of weights dicts
+#    Weights dict example:{"rf": 0.7, "xgb": 0.2, "mlp": 0.1}
+predictions = router.predict(X_test, test_preds, temperature=0.1)
 ```
 
 For classification with probability arrays, blend the output the same way to
 get a final probability distribution, then take the argmax.
+
+---
+
+### Batch vs. Streaming Usage
+
+`deskit` is fully polymorphic and handles both offline batch processing and real-time streaming data natively:
+
+* **Batch Mode:** Pass a 2D feature matrix and a dictionary of prediction arrays (as shown above) to process everything at vectorized speeds.
+* **Streaming Mode:** Pass a single 1D feature array and a dictionary of individual model outputs. `router.predict()` will automatically detect it and return a single final prediction instead of an array.
+
+If you want to handle the ensembling math yourself or inspect the raw dynamic routing weights, use `predict_weights`:
+
+```python
+# Returns a dictionary of weights (or array of weights for a batch)
+# e.g., {"rf": 0.7, "xgb": 0.2, "mlp": 0.1}
+weights = router.predict_weights(X_test, temperature=0.1)
+```
 
 ---
 
@@ -112,7 +132,10 @@ with torch.no_grad():
 
 router = KNORAU(task="classification", metric="accuracy", mode="max", k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(X_test[i])
+
+# Get final blended predictions
+X_test_np = X_test_t.cpu().numpy()
+predictions = router.predict(X_test_np, test_preds, temperature=0.1)
 ```
 
 ---

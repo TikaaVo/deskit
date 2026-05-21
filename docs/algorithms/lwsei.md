@@ -27,6 +27,8 @@ based on the inverse-distance. Afterwards, the local system is built and NNLS is
 the coefficients are divided by the sum to normalize them into weights. If the solver returns all zeros, weights fall 
 back to being uniform.
 
+These weights can then be provided as output or combined with predictions to make a final ensembled answer.
+
 ---
 
 ## Parameters
@@ -35,7 +37,8 @@ back to being uniform.
 |---|---|---|---|
 | `task` | str | — | `"classification"` or `"regression"` |
 | `k` | int | 10 | Number of neighbours. Higher k gives more stable fits but reduces locality. |
-| `preset` | str | `"balanced"` | ANN backend preset. See `list_presets()`. |
+| `preset` | str | `"balanced"` | ANN backend preset. Options:    `"exact"`,`"balanced"`, `"fast"`, `"turbo"`, `"high_dim_balanced"`, `"high_dim_fast"` |
+| `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
 
 LWSE-I has no `metric`, `mode`, `threshold`, or `temperature` parameters. The objective is
 always local squared error, non-negativity is enforced by the solver, and sparsity emerges
@@ -51,7 +54,7 @@ from deskit.des.lwsei import LWSEI
 
 router = LWSEI(task="regression", k=20)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 ```
 
 ```python
@@ -60,7 +63,7 @@ from deskit.des.lwsei import LWSEI
 
 router = LWSEI(task="classification", k=10)
 router.fit(X_val, y_val, val_preds)
-weights = router.predict(x)
+answers = router.predict(X_test, test_preds)
 ```
 
 ---
