@@ -11,8 +11,8 @@ pip install deskit
 ```
 
 These are the dependencies for deskit to work:
-- Python (>= 3.8)
 
+- Python (>= 3.8)
 - NumPy (>= 1.21)
 
 Because deskit is based around K-Nearest Neighbors (KNN), at least one of the following must be installed, in order to use KNN or ANN (See the backends section of the [main page](index.md)):
