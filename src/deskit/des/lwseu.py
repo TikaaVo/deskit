@@ -19,9 +19,12 @@ class LWSEU(PredictBase):
         Neighbourhood size. Default: 10.
     preset : str
         Neighbour search preset. Default: 'balanced'. See list_presets().
+    distance_metric : str
+        Distance function to use for neighbor search. Default: 'euclidean'. See
+        neighbors.list_distance_metrics() for all options and per-backend availability.
     """
 
-    def __init__(self, task, k=10, preset='balanced', **kwargs):
+    def __init__(self, task, k=10, preset='balanced', distance_metric='euclidean', **kwargs):
         self.task    = task
         self.k       = k
         self._finder = make_finder(preset, k, **kwargs)

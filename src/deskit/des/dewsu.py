@@ -31,10 +31,13 @@ class DEWSU(KNNBase):
         (min-metrics) and 1.0 for classification (max-metrics) at predict time.
     preset : str
         Neighbor search preset. Default: 'balanced'. See list_presets().
+    distance_metric : str
+        Distance function to use for neighbor search. Default: 'euclidean'. See
+        neighbors.list_distance_metrics() for all options and per-backend availability.
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, temperature=None, preset='balanced', **kwargs):
+                 threshold=0.5, temperature=None, preset='balanced', distance_metric='euclidean', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)

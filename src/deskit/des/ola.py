@@ -22,10 +22,13 @@ class OLA(KNNBase):
         Neighborhood size. Default: 10.
     preset : str
         Neighbor search preset. Default: 'balanced'. See list_presets().
+    distance_metric : str
+        Distance function to use for neighbor search. Default: 'euclidean'. See
+        neighbors.list_distance_metrics() for all options and per-backend availability.
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 preset='balanced', threshold=None, **kwargs):
+                 preset='balanced', threshold=None, distance_metric='euclidean', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)

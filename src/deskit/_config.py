@@ -88,7 +88,7 @@ def resolve_metric(metric):
 # Neighbor finder construction
 # ---------------------------------------------------------------------------
 
-def make_finder(preset, k, finder=None, **kwargs):
+def make_finder(preset, k, finder=None, distance_metric='euclidean', **kwargs):
     """
     Create a NeighborFinder from a preset name or custom finder string.
 
@@ -100,6 +100,17 @@ def make_finder(preset, k, finder=None, **kwargs):
         Number of neighbors.
     finder : str, optional
         Required when preset='custom'. One of 'knn', 'faiss', 'annoy', 'hnsw'.
+    distance_metric : str
+        Distance function to use. Default: 'euclidean'. See
+        neighbors.list_distance_metrics() for all options and per-backend
+        availability.
+
+        Quick guide:
+          'euclidean'  — Best default for most tabular data.
+          'manhattan'  — More robust to outliers; good for moderate-to-high dims.
+          'chebyshev'  — Max abs diff; use preset='exact' (KNN only).
+          'minkowski'  — L1/L2 generalisation; use preset='exact' (KNN only).
+          'cosine'     — Direction-based; ideal for embeddings (NLP, vision).
     **kwargs
         Forwarded to the finder constructor (e.g. index_type, n_probes).
     """
@@ -107,7 +118,7 @@ def make_finder(preset, k, finder=None, **kwargs):
         if finder is None:
             raise ValueError("Must specify 'finder' when using preset='custom'.")
         finder_type = finder.lower()
-        finder_kwargs = {'k': k, **kwargs}
+        finder_kwargs = {'k': k, 'distance_metric': distance_metric, **kwargs}
     else:
         if preset not in SPEED_PRESETS:
             raise ValueError(
@@ -117,7 +128,7 @@ def make_finder(preset, k, finder=None, **kwargs):
             )
         config = SPEED_PRESETS[preset]
         finder_type = config['finder']
-        finder_kwargs = {**config['kwargs'], 'k': k, **kwargs}
+        finder_kwargs = {**config['kwargs'], 'k': k, 'distance_metric': distance_metric, **kwargs}
 
     if finder_type == 'knn':
         from deskit.neighbors import KNNNeighborFinder

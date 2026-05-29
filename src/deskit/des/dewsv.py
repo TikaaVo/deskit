@@ -37,12 +37,15 @@ class DEWSV(KNNBase):
         Defaults to 0.5 for min-metrics, 1.0 otherwise.
     preset : str
         Neighbour search preset. Default: 'balanced'. See list_presets().
+    distance_metric : str
+        Distance function to use for neighbor search. Default: 'euclidean'. See
+        neighbors.list_distance_metrics() for all options and per-backend availability. 
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, temperature=None, preset='balanced', **kwargs):
+                 threshold=0.5, temperature=None, preset='balanced', distance_metric='euclidean', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
-        finder = make_finder(preset, k, **kwargs)
+        finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
 
         self._use_signed = metric_name in _SIGNED_METRICS
         self._metric_name = metric_name

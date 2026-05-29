@@ -40,11 +40,14 @@ class DEWST(KNNBase):
         the sample falls back to DEWS-I scoring for that model. Default: 0.7.
     preset : str
         Neighbour search preset. Default: 'balanced'. See list_presets().
+    distance_metric : str
+        Distance function to use for neighbor search. Default: 'euclidean'. See
+        neighbors.list_distance_metrics() for all options and per-backend availability.
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
                  threshold=0.5, temperature=None, r2_threshold=0.7,
-                 preset='balanced', **kwargs):
+                 preset='balanced', distance_metric='euclidean', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
 
