@@ -56,7 +56,7 @@ class KNORAIU(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -64,7 +64,7 @@ class KNORAIU(KNNBase):
         """
         th = threshold if threshold is not None else self.threshold
 
-        distances, indices = self.model.kneighbors(x)                # both (batch, k)
+        distances, indices = self.model.kneighbors(x, k=k)                # both (batch, k)
         neighbor_scores    = self.matrix[indices]                     # (batch, k, n_models)
 
         # Normalize per neighbor: best model = 1.0, worst = 0.0

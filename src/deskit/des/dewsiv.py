@@ -84,7 +84,7 @@ class DEWSIV(KNNBase):
                 preds = np.asarray(preds_dict[name])
                 self._var_matrix[:, j] = np.vectorize(_signed_residual)(y, preds)
 
-    def _weights_batch(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -94,7 +94,7 @@ class DEWSIV(KNNBase):
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        distances, indices = self.model.kneighbors(x)                # both (batch, k)
+        distances, indices = self.model.kneighbors(x, k=k)                # both (batch, k)
 
         # Inverse-distance weights
         inv_dist   = 1.0 / np.maximum(distances, 1e-8)               # (batch, k)

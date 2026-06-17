@@ -54,7 +54,7 @@ class OLA(KNNBase):
         if mat_max > mat_min:
             self.matrix = (self.matrix - mat_min) / (mat_max - mat_min)
 
-    def _weights_batch(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -63,7 +63,7 @@ class OLA(KNNBase):
         """
         batch_size = x.shape[0]
 
-        _, indices  = self.model.kneighbors(x)
+        _, indices  = self.model.kneighbors(x, k=k)
         avg_scores  = self.matrix[indices].mean(axis=1)               # (batch, n_models)
         best_indices = np.argmax(avg_scores, axis=1)
 

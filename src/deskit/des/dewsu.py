@@ -65,7 +65,7 @@ class DEWSU(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -75,7 +75,7 @@ class DEWSU(KNNBase):
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        _, indices = self.model.kneighbors(x)                        # (batch, k)
+        _, indices = self.model.kneighbors(x, k=k)                        # (batch, k)
 
         # Average each model's scores over the K neighbors
         avg_scores = self.matrix[indices].mean(axis=1)               # (batch, n_models)

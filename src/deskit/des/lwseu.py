@@ -74,7 +74,7 @@ class LWSEU(PredictBase):
         self._y_val = y
         self._finder.fit(features)
 
-    def _weights_batch(self, x, temperature=None, **kwargs):
+    def _weights_batch(self, x, temperature=None, k=None, **kwargs):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -87,7 +87,7 @@ class LWSEU(PredictBase):
         n_models   = len(self.models)
         uniform    = np.full(n_models, 1.0 / n_models)
 
-        distances, indices = self._finder.kneighbors(x)              # (batch, k)
+        distances, indices = self._finder.kneighbors(x, k=k)              # (batch, k)
         weights_out        = np.empty((batch_size, n_models))
 
         for b in range(batch_size):
