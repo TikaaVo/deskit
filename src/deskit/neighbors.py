@@ -13,18 +13,28 @@ _FAISS_MIN_SAMPLES_PER_CELL = 40
 # 'euclidean' is the universal default and always available.
 #
 # Choosing a distance metric:
-#   euclidean  – The standard L2 norm. Best default for most tabular data.
-#   manhattan  – L1 norm (sum of absolute differences). More robust to outliers
-#                and tends to work better in moderately high-dimensional spaces
-#                because it doesn't square large differences.
-#   chebyshev  – L∞ norm (maximum absolute difference across features). Useful
-#                when a single feature dominating the distance is acceptable;
-#                common in game-grid / chess-style distance problems.
-#   minkowski  – Generalisation of L1/L2 (controlled by p). p=1 → manhattan,
-#                p=2 → euclidean. Use when you want to tune between them.
-#   cosine     – Angle between vectors, ignoring magnitude. Excellent for
-#                embeddings (text, image, audio) where direction matters more
-#                than raw scale.
+#   euclidean       – The standard L2 norm. Best default for most tabular data.
+#   manhattan       – L1 norm (sum of absolute differences). More robust to
+#                    outliers and tends to work better in moderately high-
+#                    dimensional spaces because it doesn't square large diffs.
+#   chebyshev       – L∞ norm (maximum absolute difference across features).
+#                    Useful when a single feature dominating the distance is
+#                    acceptable; common in game-grid / chess-style problems.
+#   minkowski       – Generalisation of L1/L2 (controlled by p). p=1 →
+#                    manhattan, p=2 → euclidean. Use when you want to tune
+#                    between them.
+#   cosine          – Angle between vectors, ignoring magnitude. Excellent for
+#                    embeddings (text, image, audio) where direction matters
+#                    more than raw scale.
+#   canberra        – Weighted L1. Sensitive to small values near zero.
+#   braycurtis      – Normalised L1 bounded to [0,1]. Common in ecology.
+#   jensenshannon   – Symmetric KL divergence on probability distributions.
+#                    Requires non-negative vectors. Supported by FAISS flat/
+#                    HNSW/GPU indices natively.
+#   dot             – Raw inner/dot product. Not a true metric; distances are
+#                    not comparable across queries. Use for max inner-product
+#                    search (recommendation systems). Prefer 'cosine' for
+#                    normalised embeddings.
 
 # Metrics that every backend supports natively.
 _UNIVERSAL_METRICS = {'euclidean', 'manhattan', 'chebyshev', 'minkowski', 'cosine'}
@@ -33,31 +43,59 @@ _UNIVERSAL_METRICS = {'euclidean', 'manhattan', 'chebyshev', 'minkowski', 'cosin
 # KNN (sklearn) supports all scipy metrics — this is the complete curated list.
 _KNN_METRICS = _UNIVERSAL_METRICS | {'correlation', 'hamming', 'canberra', 'braycurtis'}
 
-# FAISS only has built-in L2 and inner-product (cosine via normalization).
-# All others fall back to a manual compute-then-search path.
-_FAISS_NATIVE_METRICS = {'euclidean', 'cosine'}
-_FAISS_METRICS = _UNIVERSAL_METRICS  # remainder handled via sklearn fallback
+# FAISS native metric support:
+#   IndexFlat, IndexHNSW, and GpuIndexFlat support METRIC_L1, METRIC_Linf,
+#   METRIC_Lp (with metric_arg for p), METRIC_Canberra, METRIC_BrayCurtis,
+#   and METRIC_JensenShannon in addition to L2 and inner product.
+#   IndexIVFFlat only supports L2 and inner product.
+#   'ivf' index_type will still fall back for non-L2/cosine metrics.
+_FAISS_FLAT_HNSW_NATIVE_METRICS = {
+    'euclidean', 'cosine', 'manhattan', 'chebyshev', 'minkowski',
+    'canberra', 'braycurtis', 'jensenshannon',
+}
+_FAISS_IVF_NATIVE_METRICS = {'euclidean', 'cosine'}
+
+# For backwards compatibility: the overall set accepted by FaissNeighborFinder.
+_FAISS_METRICS = _FAISS_FLAT_HNSW_NATIVE_METRICS | {'correlation', 'hamming'}
 
 # Annoy metric names (library-specific).
+# Annoy natively supports: euclidean, manhattan, cosine (angular), hamming,
+# and dot (inner product). chebyshev and minkowski have no Annoy equivalent.
 _ANNOY_METRIC_MAP = {
     'euclidean': 'euclidean',
     'manhattan': 'manhattan',
     'cosine':    'angular',
     'hamming':   'hamming',
-    # chebyshev and minkowski are not natively supported; we warn the user.
+    'dot':       'dot',
 }
 _ANNOY_METRICS = set(_ANNOY_METRIC_MAP)
 
-# HNSW (hnswlib) space names.
-_HNSW_METRIC_MAP = {
+# hnswlib space names — only three native spaces exist.
+# 'ip' is inner product (not a true metric; used for max inner-product search).
+_HNSWLIB_METRIC_MAP = {
     'euclidean': 'l2',
     'cosine':    'cosine',
-    # Others not natively supported in hnswlib; we warn and fall back to l2.
+    'dot':       'ip',
 }
+
+# nmslib space names for DENSE_VECTOR + HNSW.
+# l1/linf/angulardist are confirmed supported by nmslib's integration tests.
+# 'dot' maps to negdotprod (nmslib maximises inner product via negative distance).
+_NMSLIB_METRIC_MAP = {
+    'euclidean':  'l2',
+    'cosine':     'cosinesimil',
+    'manhattan':  'l1',
+    'chebyshev':  'linf',
+    'dot':        'negdotprod',
+}
+
+# Unified view for HNSWNeighborFinder validation: union of both backends.
+# We keep the old name for backwards compatibility.
+_HNSW_METRIC_MAP = _HNSWLIB_METRIC_MAP   # kept for any external references
 _HNSW_METRICS = _UNIVERSAL_METRICS  # partial — see fit() for fallback note
 
 # All metrics callable from the public API.
-ALL_METRICS = _KNN_METRICS
+ALL_METRICS = _KNN_METRICS | {'jensenshannon', 'dot'}
 
 
 def list_distance_metrics():
@@ -65,19 +103,21 @@ def list_distance_metrics():
     print("\nAvailable Distance Metrics:")
     print("=" * 70)
     rows = [
-        ("euclidean",  "Default. L2 norm. Best for most tabular data.",                       "all"),
-        ("manhattan",  "L1 norm. More robust to outliers; good for high-dim data.",            "all"),
-        ("chebyshev",  "L∞ norm. Max absolute diff across features.",                         "KNN only (exact preset)"),
-        ("minkowski",  "Generalises L1/L2 via p-param. Set minkowski_p=<float>.",             "KNN only (exact preset)"),
-        ("cosine",     "Angle between vectors. Ideal for embeddings (NLP, vision).",           "all"),
-        ("correlation","Pearson correlation distance. Good for time series.",                  "KNN only (exact preset)"),
-        ("hamming",    "Fraction of differing components. For binary/categorical data.",       "KNN, Annoy"),
-        ("canberra",   "Weighted L1. Sensitive to small values near zero.",                    "KNN only (exact preset)"),
-        ("braycurtis", "Normalised L1 bounded to [0,1]. Ecological data.",                    "KNN only (exact preset)"),
+        ("euclidean",      "Default. L2 norm. Best for most tabular data.",                        "all"),
+        ("manhattan",      "L1 norm. More robust to outliers; good for high-dim data.",             "KNN, FAISS (flat/hnsw), Annoy, HNSW-nmslib"),
+        ("chebyshev",      "L∞ norm. Max absolute diff across features.",                          "KNN, FAISS (flat/hnsw), HNSW-nmslib"),
+        ("minkowski",      "Generalises L1/L2 via p-param. Set minkowski_p=<float>.",              "KNN, FAISS (flat/hnsw)"),
+        ("cosine",         "Angle between vectors. Ideal for embeddings (NLP, vision).",            "all"),
+        ("dot",            "Inner/dot product. Not a metric; used for max-IP search.",              "Annoy, HNSW (hnswlib ip / nmslib negdotprod)"),
+        ("canberra",       "Weighted L1. Sensitive to small values near zero.",                     "KNN, FAISS (flat/hnsw/gpu)"),
+        ("braycurtis",     "Normalised L1 bounded to [0,1]. Ecological data.",                     "KNN, FAISS (flat/hnsw/gpu)"),
+        ("jensenshannon",  "Symmetric KL divergence. Requires non-negative vectors.",               "FAISS (flat/hnsw/gpu)"),
+        ("correlation",    "Pearson correlation distance. Good for time series.",                   "KNN only"),
+        ("hamming",        "Fraction of differing components. For binary/categorical data.",        "KNN, Annoy"),
     ]
     for name, desc, backends in rows:
-        print(f"\n  {name:<14}  {desc}")
-        print(f"  {'':14}  Backends: {backends}")
+        print(f"\n  {name:<16}  {desc}")
+        print(f"  {'':16}  Backends: {backends}")
     print("\n" + "=" * 70)
 
 
@@ -160,21 +200,36 @@ class FaissNeighborFinder(NeighborFinder):
     """
     Approximate nearest neighbors via FAISS (flat, IVF, or HNSW index).
 
-    Natively supports 'euclidean' and 'cosine'. All other metrics in
-    _UNIVERSAL_METRICS fall back to a sklearn-based exact search with a
-    warning, so you can still use them without switching presets.
+    Native metric support depends on index_type:
+
+    flat / hnsw / gpu-flat
+        FAISS IndexFlat, IndexHNSW, and GpuIndexFlat natively support:
+        euclidean, cosine, manhattan (L1), chebyshev (Linf), minkowski (Lp),
+        canberra, braycurtis, jensenshannon.
+
+    ivf
+        IndexIVFFlat only supports L2 and inner-product (cosine). All other
+        metrics fall back to an exact sklearn KNN with a warning.
+
+    correlation and hamming always fall back to sklearn for all index types.
     """
 
     def __init__(self, k=10, index_type='flat', n_cells=None, n_probes=50,
                  hnsw_M=32, hnsw_efConstruction=400, hnsw_efSearch=200,
-                 distance_metric='euclidean'):
+                 distance_metric='euclidean', minkowski_p=2):
         """
         Parameters
         ----------
         distance_metric : str
-            'euclidean' (default) or 'cosine'. Other metrics fall back to
-            exact sklearn search with a warning — use preset='exact' to avoid
-            the overhead.
+            Metric to use. flat/hnsw/gpu index types natively support:
+            'euclidean', 'cosine', 'manhattan', 'chebyshev', 'minkowski',
+            'canberra', 'braycurtis', 'jensenshannon'.
+            'ivf' only natively supports 'euclidean' and 'cosine'; all others
+            fall back to exact sklearn KNN with a warning.
+            'correlation' and 'hamming' always fall back to sklearn.
+        minkowski_p : float
+            The p-parameter for the Minkowski metric. p=1 → manhattan,
+            p=2 → euclidean. Ignored for all other metrics.
         """
         if k <= 0:
             raise ValueError(f"k must be positive, got k={k}")
@@ -193,6 +248,7 @@ class FaissNeighborFinder(NeighborFinder):
         self.hnsw_efConstruction = hnsw_efConstruction
         self.hnsw_efSearch = hnsw_efSearch
         self.distance_metric = metric
+        self.minkowski_p = minkowski_p
         self.index_ = None
         self._fallback_finder = None   # used for non-native metrics
         self._check_availability()
@@ -203,6 +259,31 @@ class FaissNeighborFinder(NeighborFinder):
             self.faiss = faiss
         except ImportError:
             raise ImportError("FAISS not found. Install with: pip install faiss-cpu")
+
+    @staticmethod
+    def _faiss_metric_type(faiss, metric, minkowski_p=2):
+        """
+        Return (faiss_metric_constant, metric_arg) for a given metric name.
+        metric_arg is only meaningful for METRIC_Lp (minkowski).
+        Raises ValueError for metrics that have no FAISS MetricType constant
+        (i.e. those that must be handled via fallback).
+        """
+        _MAP = {
+            'euclidean':    (faiss.METRIC_L2,             None),
+            'cosine':       (faiss.METRIC_INNER_PRODUCT,  None),
+            'manhattan':    (faiss.METRIC_L1,             None),
+            'chebyshev':    (faiss.METRIC_Linf,           None),
+            'minkowski':    (faiss.METRIC_Lp,             None),   # metric_arg set below
+            'canberra':     (faiss.METRIC_Canberra,       None),
+            'braycurtis':   (faiss.METRIC_BrayCurtis,     None),
+            'jensenshannon':(faiss.METRIC_JensenShannon,  None),
+        }
+        if metric not in _MAP:
+            raise KeyError(metric)
+        ft, arg = _MAP[metric]
+        if metric == 'minkowski':
+            arg = float(minkowski_p)
+        return ft, arg
 
     @staticmethod
     def _l2_normalize(X):
@@ -221,11 +302,18 @@ class FaissNeighborFinder(NeighborFinder):
                 f"{n_samples} samples. Reduce k to at most {n_samples}."
             )
 
-        # Non-native metrics: delegate entirely to KNNNeighborFinder.
-        if self.distance_metric not in _FAISS_NATIVE_METRICS:
+        # Determine whether the chosen metric is natively supported by this index type.
+        ivf_native = self.distance_metric in _FAISS_IVF_NATIVE_METRICS
+        flat_hnsw_native = self.distance_metric in _FAISS_FLAT_HNSW_NATIVE_METRICS
+        is_ivf = (self.index_type == 'ivf')
+
+        needs_fallback = is_ivf and not ivf_native
+        needs_fallback = needs_fallback or (not is_ivf and not flat_hnsw_native)
+
+        if needs_fallback:
             warnings.warn(
                 f"distance_metric='{self.distance_metric}' is not natively supported by "
-                f"FAISS. Falling back to exact sklearn KNN for this metric. "
+                f"FAISS {self.index_type} index. Falling back to exact sklearn KNN. "
                 f"Use preset='exact' to avoid this overhead.",
                 UserWarning,
             )
@@ -235,7 +323,7 @@ class FaissNeighborFinder(NeighborFinder):
             self._fallback_finder.fit(X)
             return self
 
-        # Cosine similarity: normalise all vectors, then use inner-product index.
+        # Cosine similarity: normalise all vectors so inner-product == cosine.
         if self.distance_metric == 'cosine':
             X = self._l2_normalize(X)
 
@@ -247,12 +335,20 @@ class FaissNeighborFinder(NeighborFinder):
                     UserWarning
                 )
             if self.distance_metric == 'cosine':
-                self.index_ = self.faiss.IndexFlatIP(dim)   # inner product on normalised vecs
-            else:
+                self.index_ = self.faiss.IndexFlatIP(dim)
+            elif self.distance_metric == 'euclidean':
                 self.index_ = self.faiss.IndexFlatL2(dim)
+            else:
+                ft, metric_arg = self._faiss_metric_type(
+                    self.faiss, self.distance_metric, self.minkowski_p
+                )
+                self.index_ = self.faiss.IndexFlat(dim, ft)
+                if metric_arg is not None:
+                    self.index_.metric_arg = metric_arg
             self.index_.add(X)
 
         elif self.index_type == 'ivf':
+            # IVF only supports L2 / inner-product (guarded above).
             if self.n_cells is None:
                 self.n_cells = min(int(np.sqrt(n_samples)), 4096)
 
@@ -300,7 +396,19 @@ class FaissNeighborFinder(NeighborFinder):
                     f"{n_samples} samples. Consider ef_construction >= 400.",
                     UserWarning
                 )
-            self.index_ = self.faiss.IndexHNSWFlat(dim, self.hnsw_M)
+            if self.distance_metric == 'cosine':
+                self.index_ = self.faiss.IndexHNSWFlat(
+                    dim, self.hnsw_M, self.faiss.METRIC_INNER_PRODUCT
+                )
+            elif self.distance_metric == 'euclidean':
+                self.index_ = self.faiss.IndexHNSWFlat(dim, self.hnsw_M)
+            else:
+                ft, metric_arg = self._faiss_metric_type(
+                    self.faiss, self.distance_metric, self.minkowski_p
+                )
+                self.index_ = self.faiss.IndexHNSWFlat(dim, self.hnsw_M, ft)
+                if metric_arg is not None:
+                    self.index_.metric_arg = metric_arg
             self.index_.hnsw.efConstruction = self.hnsw_efConstruction
             self.index_.hnsw.efSearch = self.hnsw_efSearch
             self.index_.add(X)
@@ -328,10 +436,14 @@ class FaissNeighborFinder(NeighborFinder):
             # Inner product on normalised vectors: similarity ∈ [-1, 1].
             # Convert to a proper distance (0 = identical, 2 = opposite).
             distances = 1.0 - scores
-        else:
+        elif self.distance_metric == 'euclidean':
             distances, indices = self.index_.search(X, k)
             # FAISS returns squared L2; clamp to 0 before sqrt.
             distances = np.sqrt(np.maximum(distances, 0))
+        else:
+            # All other native metrics (manhattan, chebyshev, minkowski, canberra,
+            # braycurtis, jensenshannon) are returned as proper distances already.
+            distances, indices = self.index_.search(X, k)
 
         return distances.astype(np.float32), indices
 
@@ -340,8 +452,13 @@ class AnnoyNeighborFinder(NeighborFinder):
     """
     Approximate nearest neighbors via Annoy.
 
-    Supports: euclidean, manhattan, cosine, hamming.
+    Supports: euclidean, manhattan, cosine (stored as 'angular'), hamming,
+    and dot (inner product, stored as 'dot').
     chebyshev and minkowski are not available in Annoy — use preset='exact' for those.
+
+    Note on 'dot': Annoy's dot-product space is not a true metric. Distances
+    returned are reduced inner-product values, not raw dot products — see
+    Bachrach et al. (2014). Prefer 'cosine' for normalised embeddings.
     """
 
     def __init__(self, k=10, n_trees=100, distance_metric='euclidean', search_k=-1):
@@ -349,7 +466,8 @@ class AnnoyNeighborFinder(NeighborFinder):
         Parameters
         ----------
         distance_metric : str
-            One of 'euclidean', 'manhattan', 'cosine', 'hamming'. Default: 'euclidean'.
+            One of 'euclidean', 'manhattan', 'cosine', 'hamming', 'dot'.
+            Default: 'euclidean'.
         """
         if k <= 0:
             raise ValueError(f"k must be positive, got k={k}")
@@ -440,9 +558,25 @@ class HNSWNeighborFinder(NeighborFinder):
     """
     Approximate nearest neighbors via HNSW (hnswlib or nmslib backend).
 
-    Natively supports 'euclidean' and 'cosine'. Manhattan, chebyshev, and
-    minkowski are not available in hnswlib/nmslib — use preset='exact' for those.
+    Native metric support depends on the backend:
+
+    hnswlib
+        Supports 'euclidean' (l2), 'cosine', and 'dot' (ip / inner product).
+        All other metrics raise an error — use preset='exact' instead.
+
+    nmslib
+        Supports 'euclidean' (l2), 'cosine' (cosinesimil), 'manhattan' (l1),
+        'chebyshev' (linf), and 'dot' (negdotprod / max inner-product search).
+        All other metrics raise an error — use preset='exact' instead.
+
+    Note on 'dot': inner product is not a true distance metric. Results are
+    ranked by descending similarity, not ascending distance. Use 'cosine' for
+    normalised embeddings where you want a proper distance.
     """
+
+    # Per-backend accepted metrics (validated in __init__).
+    _HNSWLIB_METRICS = set(_HNSWLIB_METRIC_MAP)   # euclidean, cosine, dot
+    _NMSLIB_METRICS  = set(_NMSLIB_METRIC_MAP)    # euclidean, cosine, manhattan, chebyshev, dot
 
     def __init__(self, k=10, M=32, ef_construction=400,
                  ef_search=200, backend='hnswlib', distance_metric='euclidean'):
@@ -450,16 +584,29 @@ class HNSWNeighborFinder(NeighborFinder):
         Parameters
         ----------
         distance_metric : str
-            'euclidean' (default) or 'cosine'. Other metrics are not supported
-            natively and will raise an error — use preset='exact' instead.
+            hnswlib: 'euclidean', 'cosine', or 'dot'.
+            nmslib:  'euclidean', 'cosine', 'manhattan', 'chebyshev', or 'dot'.
+            Default: 'euclidean'.
+        backend : str
+            'hnswlib' (default) or 'nmslib'.
         """
         if k <= 0:
             raise ValueError(f"k must be positive, got k={k}")
         metric = distance_metric.lower()
-        if metric not in _HNSW_METRIC_MAP:
+        backend_str = backend.lower()
+
+        if backend_str == 'hnswlib':
+            allowed = self._HNSWLIB_METRICS
+        elif backend_str == 'nmslib':
+            allowed = self._NMSLIB_METRICS
+        else:
+            raise ValueError(f"Unknown backend: '{backend}'. Choose 'hnswlib' or 'nmslib'.")
+
+        if metric not in allowed:
             raise ValueError(
-                f"distance_metric='{distance_metric}' is not natively supported by "
-                f"HNSWNeighborFinder. Available: {sorted(_HNSW_METRIC_MAP)}. "
+                f"distance_metric='{distance_metric}' is not supported by "
+                f"HNSWNeighborFinder (backend='{backend_str}'). "
+                f"Available: {sorted(allowed)}. "
                 f"For other metrics use preset='exact' (KNNNeighborFinder)."
             )
         self.n_neighbors = k
@@ -467,7 +614,7 @@ class HNSWNeighborFinder(NeighborFinder):
         self.M = M
         self.ef_construction = ef_construction
         self.ef_search = ef_search
-        self.backend = backend.lower()
+        self.backend = backend_str
         self.index_ = None
         self._check_availability()
 
@@ -504,7 +651,7 @@ class HNSWNeighborFinder(NeighborFinder):
             )
 
         if self.backend == 'hnswlib':
-            space = _HNSW_METRIC_MAP[self.distance_metric]
+            space = _HNSWLIB_METRIC_MAP[self.distance_metric]
             self.index_ = self.hnswlib.Index(space=space, dim=dim)
             self.index_.init_index(
                 max_elements=n_samples, M=self.M, ef_construction=self.ef_construction
@@ -513,13 +660,10 @@ class HNSWNeighborFinder(NeighborFinder):
             self.index_.add_items(X, np.arange(n_samples))
 
         else:  # nmslib
-            nmslib_space_map = {
-                'euclidean': 'l2',
-                'cosine':    'cosinesimil',
-            }
+            space = _NMSLIB_METRIC_MAP[self.distance_metric]
             self.index_ = self.nmslib.init(
                 method='hnsw',
-                space=nmslib_space_map.get(self.distance_metric, 'l2'),
+                space=space,
                 data_type=self.nmslib.DataType.DENSE_VECTOR
             )
             self.index_.addDataPointBatch(X)
