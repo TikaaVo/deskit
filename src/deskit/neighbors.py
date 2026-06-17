@@ -89,11 +89,6 @@ _NMSLIB_METRIC_MAP = {
     'dot':        'negdotprod',
 }
 
-# Unified view for HNSWNeighborFinder validation: union of both backends.
-# We keep the old name for backwards compatibility.
-_HNSW_METRIC_MAP = _HNSWLIB_METRIC_MAP   # kept for any external references
-_HNSW_METRICS = _UNIVERSAL_METRICS  # partial — see fit() for fallback note
-
 # All metrics callable from the public API.
 ALL_METRICS = _KNN_METRICS | {'jensenshannon', 'dot'}
 
