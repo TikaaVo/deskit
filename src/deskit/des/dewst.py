@@ -86,7 +86,7 @@ class DEWST(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None, r2_threshold=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, r2_threshold=None, loo=False):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -97,7 +97,7 @@ class DEWST(KNNBase):
         th    = threshold    if threshold    is not None else self.threshold
         r2_th = r2_threshold if r2_threshold is not None else self.r2_threshold
 
-        distances, indices = self.model.kneighbors(x, k=k)          # (batch, k)
+        distances, indices = self.model.kneighbors(x, k=k, loo=loo)          # (batch, k)
         k = distances.shape[1]
 
         # Inverse-distance weights

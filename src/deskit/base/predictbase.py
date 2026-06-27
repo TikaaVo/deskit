@@ -42,6 +42,11 @@ class PredictBase:
         **kwargs
             Additional per-call overrides forwarded to _weights_batch.
             Supported by most algorithms: ``threshold=<float>``.
+            KNN-based algorithms also support ``loo=<bool>`` (default
+            False): set True when X_test is (part of) the same data the
+            model was fit on -- e.g. while tuning hyperparameters on the
+            DSEL -- so each point's own occurrence is excluded from its
+            neighborhood instead of trivially matching itself at distance 0.
 
         Returns
         -------
@@ -79,7 +84,9 @@ class PredictBase:
         temperature : float, optional
             Forwarded to _weights_batch.
         **kwargs
-            Forwarded to _weights_batch (e.g. ``threshold=<float>``).
+            Forwarded to _weights_batch (e.g. ``threshold=<float>``, or
+            ``loo=<bool>`` for leave-one-out neighbor exclusion when
+            X_test is drawn from the fit DSEL -- see predict_weights).
 
         Returns
         -------

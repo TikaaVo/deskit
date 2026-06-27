@@ -38,6 +38,13 @@ class DEWSI(KNNBase):
     distance_metric : str
         Distance function to use for neighbor search. Default: 'euclidean'. See
         neighbors.list_distance_metrics() for all options and per-backend availability.
+
+    Notes
+    -----
+    predict() and predict_weights() accept an optional ``loo=True`` keyword
+    for hyperparameter tuning directly on the DSEL this model was fit on:
+    it excludes each query point's own occurrence from its neighborhood so
+    it doesn't trivially neighbor itself at distance 0.
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
@@ -69,17 +76,23 @@ class DEWSI(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
+
+        loo : bool
+            Leave-one-out. Set True when x is (part of) the DSEL this model
+            was fit on -- e.g. while tuning hyperparameters -- so each
+            point's own occurrence is excluded from its neighborhood
+            instead of trivially matching itself at distance 0.
         """
         t  = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        distances, indices = self.model.kneighbors(x, k=k)               # both (batch, k)
+        distances, indices = self._kneighbors(x, k=k, loo=loo)           # both (batch, k)
 
         # Inverse-distance-weighted average of each model's scores over K neighbors
         inv_dist   = 1.0 / np.maximum(distances, 1e-8)              # (batch, k)

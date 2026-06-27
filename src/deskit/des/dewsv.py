@@ -84,7 +84,7 @@ class DEWSV(KNNBase):
                 preds = np.asarray(preds_dict[name])
                 self._var_matrix[:, j] = np.vectorize(_signed_residual)(y, preds)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -94,7 +94,7 @@ class DEWSV(KNNBase):
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        _, indices = self.model.kneighbors(x, k=k)                        # (batch, k)
+        _, indices = self.model.kneighbors(x, k=k, loo=loo)                        # (batch, k)
 
         # Uniform average of each model's scores over K neighbors
         neighbor_scores = self.matrix[indices]                        # (batch, k, n_models)

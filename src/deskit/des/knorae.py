@@ -55,7 +55,7 @@ class KNORAE(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -64,7 +64,7 @@ class KNORAE(KNNBase):
         th       = threshold if threshold is not None else self.threshold
         n_models = len(self.models)
 
-        _, indices      = self.model.kneighbors(x, k=k)
+        _, indices      = self.model.kneighbors(x, k=k, loo=loo)
         k               = indices.shape[1]
         neighbor_scores = self.matrix[indices]                        # (batch, k, n_models)
 
