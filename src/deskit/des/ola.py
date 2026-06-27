@@ -63,7 +63,7 @@ class OLA(KNNBase):
         """
         batch_size = x.shape[0]
 
-        _, indices  = self.model._kneighbors(x, k=k, loo=loo)
+        _, indices  = self._kneighbors(x, k=k, loo=loo)
         avg_scores  = self.matrix[indices].mean(axis=1)               # (batch, n_models)
         best_indices = np.argmax(avg_scores, axis=1)
 

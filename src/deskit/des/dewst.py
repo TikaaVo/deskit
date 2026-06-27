@@ -97,7 +97,7 @@ class DEWST(KNNBase):
         th    = threshold    if threshold    is not None else self.threshold
         r2_th = r2_threshold if r2_threshold is not None else self.r2_threshold
 
-        distances, indices = self.model._kneighbors(x, k=k, loo=loo)          # (batch, k)
+        distances, indices = self._kneighbors(x, k=k, loo=loo)          # (batch, k)
         k = distances.shape[1]
 
         # Inverse-distance weights

@@ -75,7 +75,7 @@ class DEWSU(KNNBase):
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        _, indices = self.model._kneighbors(x, k=k, loo=loo)                        # (batch, k)
+        _, indices = self._kneighbors(x, k=k, loo=loo)                        # (batch, k)
 
         # Average each model's scores over the K neighbors
         avg_scores = self.matrix[indices].mean(axis=1)               # (batch, n_models)

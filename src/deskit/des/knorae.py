@@ -64,7 +64,7 @@ class KNORAE(KNNBase):
         th       = threshold if threshold is not None else self.threshold
         n_models = len(self.models)
 
-        _, indices      = self.model._kneighbors(x, k=k, loo=loo)
+        _, indices      = self._kneighbors(x, k=k, loo=loo)
         k               = indices.shape[1]
         neighbor_scores = self.matrix[indices]                        # (batch, k, n_models)
 
