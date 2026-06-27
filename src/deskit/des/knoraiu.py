@@ -64,7 +64,7 @@ class KNORAIU(KNNBase):
         """
         th = threshold if threshold is not None else self.threshold
 
-        distances, indices = self.model.kneighbors(x, k=k, loo=loo)                # both (batch, k)
+        distances, indices = self.model._kneighbors(x, k=k, loo=loo)                # both (batch, k)
         neighbor_scores    = self.matrix[indices]                     # (batch, k, n_models)
 
         # Normalize per neighbor: best model = 1.0, worst = 0.0

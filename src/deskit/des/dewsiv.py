@@ -94,7 +94,7 @@ class DEWSIV(KNNBase):
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        distances, indices = self.model.kneighbors(x, k=k, loo=loo)                # both (batch, k)
+        distances, indices = self.model._kneighbors(x, k=k, loo=loo)                # both (batch, k)
 
         # Inverse-distance weights
         inv_dist   = 1.0 / np.maximum(distances, 1e-8)               # (batch, k)

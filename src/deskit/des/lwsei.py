@@ -87,7 +87,7 @@ class LWSEI(PredictBase):
         n_models   = len(self.models)
         uniform    = np.full(n_models, 1.0 / n_models)
 
-        distances, indices = self._finder.kneighbors(x, k=k, loo=loo)              # (batch, k)
+        distances, indices = self._finder._kneighbors(x, k=k, loo=loo)              # (batch, k)
         weights_out        = np.empty((batch_size, n_models))
 
         for b in range(batch_size):
