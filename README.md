@@ -115,6 +115,17 @@ weights = router.predict_weights(X_test, temperature=0.1)
 
 ---
 
+### Hyperparameter tuning
+
+`deskit` supports hyperparameter tuning of KNN-based methods using Leave One Out (LOO) tuning.
+This technique excludes the closest data point with a negligent distance from the one being used in predict(), allowing for `deskit` methods to be tuned from the same DSEL set it was fit on and removing the need for cross-validation as it sees the entire set throughout the tuning process.
+
+```python
+results = router.predict(X_val, val_preds, loo=True)
+```
+
+---
+
 ## Why deskit?
 
 Most DES libraries are tied to scikit-learn. deskit only ever sees a numpy

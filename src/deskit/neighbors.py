@@ -4,38 +4,6 @@ import warnings
 # FAISS IVF k-means needs at least this many training samples per cell to converge.
 _FAISS_MIN_SAMPLES_PER_CELL = 40
 
-
-# ---------------------------------------------------------------------------
-# Distance metric registry
-# ---------------------------------------------------------------------------
-
-# Metrics supported by each backend.
-# 'euclidean' is the universal default and always available.
-#
-# Choosing a distance metric:
-#   euclidean       – The standard L2 norm. Best default for most tabular data.
-#   manhattan       – L1 norm (sum of absolute differences). More robust to
-#                    outliers and tends to work better in moderately high-
-#                    dimensional spaces because it doesn't square large diffs.
-#   chebyshev       – L∞ norm (maximum absolute difference across features).
-#                    Useful when a single feature dominating the distance is
-#                    acceptable; common in game-grid / chess-style problems.
-#   minkowski       – Generalisation of L1/L2 (controlled by p). p=1 →
-#                    manhattan, p=2 → euclidean. Use when you want to tune
-#                    between them.
-#   cosine          – Angle between vectors, ignoring magnitude. Excellent for
-#                    embeddings (text, image, audio) where direction matters
-#                    more than raw scale.
-#   canberra        – Weighted L1. Sensitive to small values near zero.
-#   braycurtis      – Normalised L1 bounded to [0,1]. Common in ecology.
-#   jensenshannon   – Symmetric KL divergence on probability distributions.
-#                    Requires non-negative vectors. Supported by FAISS flat/
-#                    HNSW/GPU indices natively.
-#   dot             – Raw inner/dot product. Not a true metric; distances are
-#                    not comparable across queries. Use for max inner-product
-#                    search (recommendation systems). Prefer 'cosine' for
-#                    normalised embeddings.
-
 # Metrics that every backend supports natively.
 _UNIVERSAL_METRICS = {'euclidean', 'manhattan', 'chebyshev', 'minkowski', 'cosine'}
 

@@ -38,13 +38,9 @@ class DEWSI(KNNBase):
     distance_metric : str
         Distance function to use for neighbor search. Default: 'euclidean'. See
         neighbors.list_distance_metrics() for all options and per-backend availability.
-
-    Notes
-    -----
-    predict() and predict_weights() accept an optional ``loo=True`` keyword
-    for hyperparameter tuning directly on the DSEL this model was fit on:
-    it excludes each query point's own occurrence from its neighborhood so
-    it doesn't trivially neighbor itself at distance 0.
+    loo: bool
+        Enables Leave One Out (LOO) for hyperparameter tuning on the DSEL set. Default: 'false'.
+        Ignores closest neighbor with a negligible distance to avoid overfitting.
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,

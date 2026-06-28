@@ -39,8 +39,10 @@ These weights can then be provided as output or combined with predictions to mak
 |---|---|---|---|
 | `task` | str | — | `"classification"` or `"regression"` |
 | `k` | int | 10 | Number of neighbours. Higher k gives more stable fits but reduces locality. |
+| `distance_metric` | str | "euclidian" |Distance metric  used for KNN/ANN. See [distance metrics](../backends/distance_metrics.md)   
 | `preset` | str | `"balanced"` | ANN backend preset. Options:    `"exact"`,`"balanced"`, `"fast"`, `"turbo"`, `"high_dim_balanced"`, `"high_dim_fast"` |
 | `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
+| `loo`      | bool | false                          | Enables Leave One Out (LOO) tuning; ignores the closest neighbor with negligible distance when selecting the K neighbors.                                                                             |
 
 LWSE-U has no `metric`, `mode`, `threshold`, or `temperature` parameters. The objective is
 always local squared error, non-negativity is enforced by the solver, and sparsity emerges
