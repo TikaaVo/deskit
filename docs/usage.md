@@ -60,10 +60,12 @@ The initialization function accepts the following parameters:
 | `mode`        | str | —                                     | `"max"` if higher is better, `"min"` if lower                                                                                                                   |
 | `k`           | int | 10                                    | Number of neighbours                                                                                                                                            |
 | `threshold`   | float | 0.5                                   | Competence cutoff                                                                                                                                               |
-| `temperature` | float | 0.5/1.0 for regression/classification | Defines how smooth the model blend is                                                                                                           |
+| `temperature` | float | 0.5/1.0 for regression/classification | Defines how smooth the model blend is               
+| `distance_metric` | str | "euclidean" |Distance metric  used for KNN/ANN. See [distance metrics](../backends/distance_metrics.md)                                                                                                    |
 | `preset`      | str | `"balanced"`                          | ANN backend preset. Options:    `"exact"`,`"balanced"`, `"fast"`, `"turbo"`, `"high_dim_balanced"`, `"high_dim_fast"`                                                                                                                                    |
 | `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
-
+| `distance_metric` | str | "euclidean" |Distance metric  used for KNN/ANN. See [distance metrics](../backends/distance_metrics.md)        
+| `loo`      | bool | false                          | Enables Leave One Out (LOO) tuning; ignores the closest neighbor with negligible distance when selecting the K neighbors.                                                                             |
 ---
 
 It is important to note that not all of these are used for every algorithm. `temperature` is only used by DEWS methods, while LWSE methods also don't use `metric`, `mode`, or `threshold`. Consider their respective documentation pages from the [menu](index.md) to find out more.
