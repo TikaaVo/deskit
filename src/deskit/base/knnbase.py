@@ -57,6 +57,11 @@ class KNNBase(PredictBase, BaseRouter):
             scores = self._compute_scores(y, preds_dict[name])
             self.matrix[:, j] = scores if self.mode == 'max' else -scores
 
+        if self.task == 'classification':
+            self.classes_ = np.unique(y)
+        else:
+            self.classes_ = None
+
         self.model.fit(features)
 
     def _kneighbors(self, x, k=None, loo=False):

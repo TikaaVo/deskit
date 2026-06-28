@@ -103,7 +103,10 @@ class PredictBase:
         if self.task == 'classification':
             # Probability arrays: blend per-class columns.
             # preds_3d : (batch, n_models, n_classes)
-            preds_3d = np.stack(preds_list, axis=1)
+
+            n_classes = len(self.classes_)
+            preds_2d = np.stack(preds_list, axis=1)               # (batch, n_models)
+            preds_3d = np.eye(n_classes)[preds_2d.astype(int)]
             result = np.einsum("bm,bmc->bc", weights, preds_3d)  # (batch, n_classes)
         else:
             # Scalar predictions: weighted average.
