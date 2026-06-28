@@ -1102,6 +1102,12 @@ accuracy.</p>
 <td>Accepted for internal API consistency but not used</td>
 </tr>
 <tr>
+<td><code>distance_metric</code></td>
+<td>str</td>
+<td>"euclidian"</td>
+<td>Distance metric  used for KNN/ANN. See <a href="../../backends/distance_metrics/">distance metrics</a></td>
+</tr>
+<tr>
 <td><code>preset</code></td>
 <td>str</td>
 <td><code>"balanced"</code></td>
@@ -1112,6 +1118,12 @@ accuracy.</p>
 <td>str</td>
 <td>—, optional</td>
 <td>Only if the preset is <code>"custom"</code>; Options: <code>"knn"</code>, <code>"faiss"</code>, <code>"annoy"</code>, <code>"hnsw"</code></td>
+</tr>
+<tr>
+<td><code>loo</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Enables Leave One Out (LOO) tuning; ignores the closest neighbor with negligible distance when selecting the K neighbors.</td>
 </tr>
 </tbody>
 </table>
