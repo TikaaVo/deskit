@@ -1192,6 +1192,12 @@ from deskit.des.knorau import KNORAU
 <td>Defines how smooth the model blend is</td>
 </tr>
 <tr>
+<td><code>distance_metric</code></td>
+<td>str</td>
+<td>"euclidean"</td>
+<td>Distance metric  used for KNN/ANN. See <a href="../backends/distance_metrics.md">distance metrics</a></td>
+</tr>
+<tr>
 <td><code>preset</code></td>
 <td>str</td>
 <td><code>"balanced"</code></td>
@@ -1203,9 +1209,26 @@ from deskit.des.knorau import KNORAU
 <td>—, optional</td>
 <td>Only if the preset is <code>"custom"</code>; Options: <code>"knn"</code>, <code>"faiss"</code>, <code>"annoy"</code>, <code>"hnsw"</code></td>
 </tr>
+<tr>
+<td><code>distance_metric</code></td>
+<td>str</td>
+<td>"euclidean"</td>
+<td>Distance metric  used for KNN/ANN. See <a href="../backends/distance_metrics.md">distance metrics</a></td>
+</tr>
+<tr>
+<td><code>loo</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Enables Leave One Out (LOO) tuning; ignores the closest neighbor with negligible distance when selecting the K neighbors.</td>
+</tr>
+<tr>
+<td>---</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
 </tbody>
 </table>
-<hr />
 <p>It is important to note that not all of these are used for every algorithm. <code>temperature</code> is only used by DEWS methods, while LWSE methods also don't use <code>metric</code>, <code>mode</code>, or <code>threshold</code>. Consider their respective documentation pages from the <a href="../">menu</a> to find out more.</p>
 <h2 id="step-3-fit-the-router">Step 3: Fit the router</h2>
 <p>Once the router is defined, it can be fit as follows:</p>
