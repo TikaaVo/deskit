@@ -95,23 +95,25 @@ class PredictBase:
             Batch → shape ``(n_samples,)`` or ``(n_samples, n_classes)``.
         """
         x, batch_size = _prepare(X_test)
-        weights = self._weights_batch(x, temperature=temperature, **kwargs)  # (batch, n_models)
+        weights = self._weights_batch(x, temperature=temperature, **kwargs)
 
         preds_list = [np.asarray(test_preds[m], dtype=float) for m in self.models]
         first = preds_list[0]
 
         if self.task == 'classification':
-            # Probability arrays: blend per-class columns.
-            # preds_3d : (batch, n_models, n_classes)
-
-            n_classes = len(self.classes_)
-            preds_2d = np.stack(preds_list, axis=1)               # (batch, n_models)
-            preds_3d = np.eye(n_classes)[preds_2d.astype(int)]
-            result = np.einsum("bm,bmc->bc", weights, preds_3d)  # (batch, n_classes)
+            if first.ndim == 1:
+                # Hard labels: convert to one-hot internally
+                n_classes = len(self.classes_)
+                preds_2d = np.stack(preds_list, axis=1)                 # (batch, n_models)
+                preds_3d = np.eye(n_classes)[preds_2d.astype(int)]      # (batch, n_models, n_classes)
+            else:
+                preds_3d = np.stack(preds_list, axis=1)                 # (batch, n_models, n_classes)
+            result = np.einsum("bm,bmc->bc", weights, preds_3d)         # (batch, n_classes)
+            if first.ndim == 1:
+                result = np.argmax(result, axis=1)                      # (batch,)
         else:
-            # Scalar predictions: weighted average.
-            preds_2d = np.stack(preds_list, axis=1)              # (batch, n_models)
-            result = (weights * preds_2d).sum(axis=1)             # (batch,)
+            preds_2d = np.stack(preds_list, axis=1)
+            result = (weights * preds_2d).sum(axis=1)
 
         return result[0] if batch_size == 1 else result
 
