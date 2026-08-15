@@ -4,6 +4,7 @@ Not part of the public API.
 """
 import numpy as np
 from deskit.metrics import _METRICS, _PROB_METRICS, _SCALAR_METRICS
+from deskit.norms import _NORMS
 from deskit.utils import to_numpy
 
 
@@ -82,6 +83,32 @@ def resolve_metric(metric):
             )
         return name, _METRICS[name]
     return None, metric
+
+# ---------------------------------------------------------------------------
+# Normalization resolution
+# ---------------------------------------------------------------------------
+
+def resolve_norm(norm):
+    """
+    Convert a normalization string or callable to (name_or_None, callable).
+
+    Returns
+    -------
+    norm_name : str or None
+        String name if normalization was passed as a string; None for callables.
+    norm_fn : callable
+        The actual normalization function.
+    """
+    if isinstance(norm, str):
+        name = norm.lower()
+        if name not in _NORMS:
+            raise ValueError(
+                f"Unknown normalization '{norm}'. "
+                f"Built-in options: {sorted(_NORMS)}. "
+                f"Pass a callable for custom normalizations."
+            )
+        return name, _NORMS[name]
+    return None, norm
 
 
 # ---------------------------------------------------------------------------

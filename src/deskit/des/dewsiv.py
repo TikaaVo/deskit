@@ -2,7 +2,7 @@
 DEWS-IV: Distance-weighted Ensemble with Softmax — Inverse-distance + Variance-penalised.
 """
 from deskit.base.knnbase import KNNBase
-from deskit._config import make_finder, resolve_metric, prep_fit_inputs
+from deskit._config import make_finder, resolve_metric, resolve_norm, prep_fit_inputs
 import numpy as np
 
 
@@ -46,8 +46,9 @@ class DEWSIV(KNNBase):
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, temperature=None, preset='balanced', distance_metric='euclidean', **kwargs):
+                 threshold=0.5, temperature=None, preset='balanced', distance_metric='euclidean', normalization='bestrel', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
+        norm_name, norm_fn = resolve_norm(normalization)
         finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
 
         self._use_signed  = metric_name in _SIGNED_METRICS
@@ -59,6 +60,8 @@ class DEWSIV(KNNBase):
         self.threshold    = threshold
         self._temperature = temperature
         self._var_matrix  = None   # (n_val, n_models) signed residuals, MAE/MSE only
+        self.norm = norm_fn
+        self.norm_name = norm_name
 
     def fit(self, features, y, preds_dict):
         """
@@ -87,7 +90,7 @@ class DEWSIV(KNNBase):
                 preds = np.asarray(preds_dict[name])
                 self._var_matrix[:, j] = np.vectorize(_signed_residual)(y, preds)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False, normalization=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -96,6 +99,10 @@ class DEWSIV(KNNBase):
              self._temperature if self._temperature is not None else
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
+        if normalization is not None:
+            _, norm_fn = resolve_norm(normalization)
+        else:
+            norm_fn = self.norm
 
         distances, indices = self._kneighbors(x, k=k, loo=loo)                # both (batch, k)
 
@@ -128,12 +135,11 @@ class DEWSIV(KNNBase):
         var_range = var_max - var_min
         norm_var  = (local_var - var_min) / np.where(var_range > 0, var_range, 1.0)
 
-        # Penalise inconsistent models, then re-normalize
-        norm_scores = norm_scores / (1.0 + norm_var)
-        local_min   = norm_scores.min(axis=1, keepdims=True)
-        local_max   = norm_scores.max(axis=1, keepdims=True)
-        local_range = local_max - local_min
-        norm_scores = (norm_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
+        # Penalise inconsistent models
+        penalized = norm_scores / (1.0 + norm_var)
+
+        # Apply the user-selected normalization
+        norm_scores = norm_fn(penalized)
 
         # Zero out models below threshold; fall back to single best if none pass
         if th > 0:

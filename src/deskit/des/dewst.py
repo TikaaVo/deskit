@@ -2,7 +2,7 @@
 DEWS-T: Distance-weighted Ensemble with Softmax — Trend.
 """
 from deskit.base.knnbase import KNNBase
-from deskit._config import make_finder, resolve_metric, prep_fit_inputs
+from deskit._config import make_finder, resolve_metric, resolve_norm, prep_fit_inputs
 import numpy as np
 
 
@@ -50,8 +50,9 @@ class DEWST(KNNBase):
 
     def __init__(self, task, metric='mae', mode='min', k=10,
                  threshold=0.5, temperature=None, r2_threshold=0.7,
-                 preset='balanced', distance_metric='euclidean', **kwargs):
+                 preset='balanced', distance_metric='euclidean', normalization='bestrel', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
+        norm_name, norm_fn = resolve_norm(normalization)
         finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
 
         self._use_signed = metric_name in _SIGNED_METRICS
@@ -71,6 +72,9 @@ class DEWST(KNNBase):
         self._temperature = temperature
         self.r2_threshold = r2_threshold
 
+        self.norm = norm_fn
+        self.norm_name = norm_name
+
     def fit(self, features, y, preds_dict):
         """
         Fit the routing model on validation data.
@@ -89,7 +93,7 @@ class DEWST(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None, r2_threshold=None, loo=False):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, r2_threshold=None, loo=False, normalization=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -99,6 +103,10 @@ class DEWST(KNNBase):
              (0.5 if self._real_mode == 'min' else 1.0))
         th    = threshold    if threshold    is not None else self.threshold
         r2_th = r2_threshold if r2_threshold is not None else self.r2_threshold
+        if normalization is not None:
+            _, norm_fn = resolve_norm(normalization)
+        else:
+            norm_fn = self.norm
 
         distances, indices = self._kneighbors(x, k=k, loo=loo)          # (batch, k)
         k = distances.shape[1]
@@ -164,18 +172,17 @@ class DEWST(KNNBase):
         use_trend  = r2 >= r2_th
         avg_scores = np.where(use_trend, trend_scores, dewsi_scores)
 
-        # Standard DEWS softmax
-        local_min = avg_scores.min(axis=1, keepdims=True)
-        local_max = avg_scores.max(axis=1, keepdims=True)
-        local_range = local_max - local_min
-        norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
+        # Normalize
+        norm_scores = norm_fn(avg_scores)
 
+        # Threshold
         if th > 0:
             gate = norm_scores >= th
             any_pass = gate.any(axis=1, keepdims=True)
             gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
 
+        # Softmax
         max_scores = norm_scores.max(axis=1, keepdims=True)
         exp_scores = np.exp((norm_scores - max_scores) / t)
         if th > 0:

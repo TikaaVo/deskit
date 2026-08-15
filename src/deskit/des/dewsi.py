@@ -2,7 +2,7 @@
 DEWS-I: K-Nearest Neighbors with Distance-Weighted Softmax — Inverse-weighted.
 """
 from deskit.base.knnbase import KNNBase
-from deskit._config import make_finder, resolve_metric, prep_fit_inputs
+from deskit._config import make_finder, resolve_metric, resolve_norm, prep_fit_inputs
 import numpy as np
 
 
@@ -44,14 +44,17 @@ class DEWSI(KNNBase):
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, temperature=None, preset='balanced', distance_metric='euclidean', **kwargs):
+                 threshold=0.5, temperature=None, preset='balanced', distance_metric='euclidean', normalization='bestrel', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
+        norm_name, norm_fn = resolve_norm(normalization)
         finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)
         self.task = task
         self.threshold = threshold
         self._temperature = temperature
         self._metric_name = metric_name
+        self.norm = norm_fn
+        self.norm_name = norm_name
 
     def fit(self, features, y, preds_dict):
         """
@@ -72,7 +75,7 @@ class DEWSI(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False, normalization=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
@@ -87,6 +90,10 @@ class DEWSI(KNNBase):
              self._temperature if self._temperature is not None else
              (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
+        if normalization is not None:
+            _, norm_fn = resolve_norm(normalization)
+        else:
+            norm_fn = self.norm
 
         distances, indices = self._kneighbors(x, k=k, loo=loo)           # both (batch, k)
 
@@ -97,10 +104,7 @@ class DEWSI(KNNBase):
         avg_scores = (neighbor_scores * inv_dist_w[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
 
         # Normalize per neighborhood: best = 1.0, worst = 0.0
-        local_min = avg_scores.min(axis=1, keepdims=True)
-        local_max = avg_scores.max(axis=1, keepdims=True)
-        local_range = local_max - local_min
-        norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
+        norm_scores = norm_fn(avg_scores)
 
         # Zero out models below threshold; fall back to single best if none pass
         if th > 0:

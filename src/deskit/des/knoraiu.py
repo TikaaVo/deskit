@@ -2,7 +2,7 @@
 KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
 """
 from deskit.base.knnbase import KNNBase
-from deskit._config import make_finder, resolve_metric, prep_fit_inputs
+from deskit._config import make_finder, resolve_metric, resolve_norm, prep_fit_inputs
 import numpy as np
 
 
@@ -36,13 +36,17 @@ class KNORAIU(KNNBase):
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, preset='balanced', distance_metric='euclidean', **kwargs):
+                 threshold=0.5, preset='balanced', distance_metric='euclidean', normalization='bestrel', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
+        norm_name, norm_fn = resolve_norm(normalization)
         finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)
         self.task = task
         self.threshold = threshold
         self._metric_name = metric_name
+
+        self.norm = norm_fn
+        self.norm_name = norm_name
 
     def fit(self, features, y, preds_dict):
         """
@@ -59,24 +63,23 @@ class KNORAIU(KNNBase):
         )
         super().fit(features, y, preds_dict)
 
-    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False):
+    def _weights_batch(self, x, temperature=None, threshold=None, k=None, loo=False, normalization=None):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
         Returns (batch, n_models) weight array.
         temperature is accepted for API compatibility but has no effect.
         """
         th = threshold if threshold is not None else self.threshold
+        if normalization is not None:
+            _, norm_fn = resolve_norm(normalization)
+        else:
+            norm_fn = self.norm
 
         distances, indices = self._kneighbors(x, k=k, loo=loo)                # both (batch, k)
         neighbor_scores    = self.matrix[indices]                     # (batch, k, n_models)
 
         # Normalize per neighbor: best model = 1.0, worst = 0.0
-        n_min   = neighbor_scores.min(axis=2, keepdims=True)
-        n_max   = neighbor_scores.max(axis=2, keepdims=True)
-        n_range = n_max - n_min
-        norm    = np.where(n_range > 0,
-                           (neighbor_scores - n_min) / n_range,
-                           1.0)
+        norm = norm_fn(neighbor_scores)
 
         competent = norm >= th                                        # (batch, k, n_models)
 
