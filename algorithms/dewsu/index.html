@@ -1116,7 +1116,7 @@ softmax with temperature.</p>
 <td><code>threshold</code></td>
 <td>float</td>
 <td>0.5</td>
-<td>Competence cutoff</td>
+<td>Competence cutoff. For [0,1] normalizations it cuts off models below that normalized score; for zscore, it cuts off models below threshold standard deviations from the mean.</td>
 </tr>
 <tr>
 <td><code>temperature</code></td>
