@@ -52,7 +52,7 @@ class DEWST(KNNBase):
                  threshold=0.5, temperature=None, r2_threshold=0.7,
                  preset='balanced', distance_metric='euclidean', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
-        finder = make_finder(preset, k, **kwargs)
+        finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
 
         self._use_signed = metric_name in _SIGNED_METRICS
         self._metric_name = metric_name

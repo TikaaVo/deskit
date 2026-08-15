@@ -30,7 +30,7 @@ class LWSEI(PredictBase):
     def __init__(self, task, k=10, preset='balanced', distance_metric='euclidean', **kwargs):
         self.task    = task
         self.k       = k
-        self._finder = make_finder(preset, k, **kwargs)
+        self._finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
         self.models  = None
 
         self._val_preds = None   # (n_val, n_models) or (n_val, n_models, n_classes)
