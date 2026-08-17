@@ -49,12 +49,21 @@ class KNNBase(PredictBase, BaseRouter):
         This method expects pre-validated numpy arrays.
         """
         self.models = list(preds_dict.keys())
-        n_val       = len(y)
-        n_models    = len(self.models)
+        n_val = len(y)
+        n_models = len(self.models)
         self.matrix = np.zeros((n_val, n_models))
 
         for j, name in enumerate(self.models):
-            scores = self._compute_scores(y, preds_dict[name])
+            if self.metric is not None:
+                scores = self._compute_scores(y, preds_dict[name])
+            else:
+                scores = np.asarray(preds_dict[name])
+                # Validate shape
+                if scores.ndim != 1 or len(scores) != n_val:
+                    raise ValueError(
+                        f"Raw scores for model '{name}' must be a 1D array of length {n_val}; "
+                        f"got shape {scores.shape}."
+                    )
             self.matrix[:, j] = scores if self.mode == 'max' else -scores
 
         if self.task == 'classification':

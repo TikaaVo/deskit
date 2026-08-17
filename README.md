@@ -220,6 +220,8 @@ router = DEWSU(task="regression", metric=pinball, mode="min", k=20)
 
 Built-in metric strings: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_correct`.
 
+Alternatively, pass `metric=None` and populate the dictionary passed to fit() with your own per-sample computed scores instead of predictions.
+
 ---
 
 ## Data types
