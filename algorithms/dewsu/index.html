@@ -1098,7 +1098,7 @@ softmax with temperature.</p>
 <td><code>metric</code></td>
 <td>str or callable</td>
 <td>—</td>
-<td>Scoring function per sample. Built-ins: <code>accuracy</code>, <code>mae</code>, <code>mse</code>, <code>rmse</code>, <code>log_loss</code>, <code>prob_correct</code>. Custom callables <code>(y_true, y_pred) -&gt; float</code> are accepted</td>
+<td>Scoring function per sample. Built-ins: <code>accuracy</code>, <code>mae</code>, <code>mse</code>, <code>rmse</code>, <code>log_loss</code>, <code>prob_correct</code>. Custom callables <code>(y_true, y_pred) -&gt; float</code> are accepted. None is accepted if the fit dictionary is pre-computed per-sample scores instead of predictions.</td>
 </tr>
 <tr>
 <td><code>mode</code></td>
