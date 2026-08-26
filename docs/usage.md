@@ -66,7 +66,7 @@ The initialization function accepts the following parameters:
 | `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
 | `distance_metric` | str | "euclidean" |Distance metric  used for KNN/ANN. See [distance metrics](../backends/distance_metrics.md)        
 | `loo`      | bool | false                          | Enables Leave One Out (LOO) tuning; ignores the closest neighbor with negligible distance when selecting the K neighbors.       
-| `norm`      | str or callable | bestrel                          | Normalization function per sample. Built-ins: `minmax`, `zscore`, `bestrel`, `softmax`, `rank_norm`                                                                      |
+| `normalization`      | str or callable | bestrel                          | Normalization function per sample. Built-ins: `minmax`, `zscore`, `bestrel`, `softmax`, `rank_norm`                                                                      |
 ---
 
 It is important to note that not all of these are used for every algorithm. `temperature` is only used by DEWS methods, while LWSE methods also don't use `metric`, `mode`, or `threshold`. Consider their respective documentation pages from the [menu](index.md) to find out more.
