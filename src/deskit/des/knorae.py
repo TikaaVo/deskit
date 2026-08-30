@@ -39,7 +39,7 @@ class KNORAE(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         norm_name, norm_fn = resolve_norm(normalization)
         finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
-        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, normalization='bestrel', task=task)
+        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder, task=task)
         self.task = task
         self.threshold = threshold
         self._metric_name = metric_name
