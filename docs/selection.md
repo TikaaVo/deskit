@@ -38,7 +38,7 @@ and/or tuning hyperparameters, consider the following alongside the previous one
 
 - [DEWS-IV](algorithms/dewsiv.md): performs worse than the other algorithms in most cases, but can very rarely perform well
 in noisy datasets where consistency is important. 
-- [LWSE-I](algorithms/lwsei.md): has the potential to improve performance drastically, but is less consistent than
+- [LWSE-I](algorithms/lwsei.md): has the potential to improve performance, but is less consistent than
 the previous ones. Best when a dataset has clear local structure and with larger values of k. It is more computationally
 expensive than the other algorithms and is more inconsistent and k-dependent.
 
@@ -77,4 +77,4 @@ These algorithms are not recommended, mostly because there is a different algori
 - [KNORA-U](algorithms/knorau.md): not a bad algorithm, simple and consistent, but KNORA-IU is better in basically every scenario
 - [DEWS-U](algorithms/dewsu.md): once again, simple and consistent, but DEWS-I is better in almost every case
 - [LWSE-U](algorithms/lwseu.md): basically a downgrade from LWSE-I, performs well in the same areas but always worse than LWSE-I
-- [DEWS-V](algorithms/dewsv.md): very weak and inconsistent, almost never performs well, and when it does, DEWS-IV is a better choice
+- [DEWS-V](algorithms/dewsv.md): weak and inconsistent, almost never performs well, and when it does, DEWS-IV is a better choice

@@ -2,6 +2,18 @@
 
 This guide is for those who want to get started with the library. It will go through all the important details and methods.
 
+## Pre-deskit: Best Practices
+
+These are some tips to help you maximize the performance of the deskit library. These are not necessary, but can help with performance.
+
+- Make sure your model pool is competitive. If one model dominates the whole pool, deskit will just be trying to chase single best with noise. Furthermore, if the models are too similar, there won't be many relevant competence region differences to exploit, so ensure there are differences in inductive biases throughout your pool.
+
+- Verify that your DSEL dataset (the set used to fit deskit methods) is big enough, as a tiny set doesn't give the DES algorithms enough information to find local regions. Using Approximate Nearest Neighbor (ANN) backends on small sets can also encounter errors.
+
+- Standardize your dataset before passing it to deskit. Applying a scaler lets deskit algorithms perform better without having to distinguish different scales. StandardScaler from sklearn.preprocessing is useful for this.
+
+- If your dataset is imbalanced, resampling, using distance-weighted algorithms, standardizing, and using smaller values of k can improve performance.
+
 ## Step 1: Install and Import
 
 In order to install deskit, run the following command:
