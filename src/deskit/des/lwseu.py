@@ -3,6 +3,7 @@ LWSE-U: Locally Weighted Stacking Ensemble (Uniform).
 """
 from deskit.base.predictbase import PredictBase
 from deskit._config import make_finder
+from deskit.base.knnbase import _drop_self_match
 from scipy.optimize import nnls
 import numpy as np
 
@@ -77,6 +78,10 @@ class LWSEU(PredictBase):
         self._y_val = y
         self._finder.fit(features)
 
+        # Required for PredictBase.predict() when hard labels are used
+        if self.task == 'classification':
+            self.classes_ = np.unique(y)
+
     def _weights_batch(self, x, temperature=None, k=None, loo=False, **kwargs):
         """
         Core weight computation. x is a 2-D float64 numpy array (batch, n_features).
@@ -120,3 +125,32 @@ class LWSEU(PredictBase):
             weights_out[b] = coeffs / total if total > 1e-10 else uniform
 
         return weights_out
+
+    def _kneighbors(self, x, k=None, loo=False):
+        """
+        Query the fitted neighbor index, with optional leave-one-out (LOO)
+        exclusion of each query point's own occurrence in the DSEL.
+
+        Parameters
+        ----------
+        x : np.ndarray, shape (batch, n_features)
+        k : int, optional
+            Neighborhood size. None defers to the finder's default.
+        loo : bool
+            If True, query one extra neighbor per row and drop the
+            zero-distance match (the point itself) when present.
+
+        Returns
+        -------
+        distances, indices : np.ndarray, each shape (batch, k_eff)
+        """
+        if not loo:
+            return self._finder.kneighbors(x, k=k)
+
+        # Resolve default k if not given
+        if k is None:
+            probe_distances, _ = self._finder.kneighbors(x, k=k)
+            k = probe_distances.shape[1]
+
+        distances, indices = self._finder.kneighbors(x, k=k + 1)
+        return _drop_self_match(distances, indices, k)

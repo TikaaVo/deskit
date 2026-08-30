@@ -106,7 +106,8 @@ K_REG = 10
 K_CLF = 20
 TEMP_REG = 0.5
 TEMP_CLF = 1.0
-R2_THRESHOLD = 0.7
+R2_THRESHOLD = 0.8
+
 
 THRESHOLDS_REG = {
     'DEWS-U':   0.5,
@@ -481,7 +482,7 @@ def apply_global_weights_clf(probas, weights):
 
 def des_predict_reg(router, X_test, test_preds, temperature, threshold):
     names = list(test_preds.keys())
-    result = router.predict(X_test, temperature=temperature, threshold=threshold)
+    result = router.predict_weights(X_test, temperature=temperature, threshold=threshold)
     if isinstance(result, dict):
         result = [result]
     return np.array([
@@ -492,7 +493,7 @@ def des_predict_reg(router, X_test, test_preds, temperature, threshold):
 
 def des_predict_clf(router, X_test, test_probas, temperature, threshold):
     names = list(test_probas.keys())
-    result = router.predict(X_test, temperature=temperature, threshold=threshold)
+    result = router.predict_weights(X_test, temperature=temperature, threshold=threshold)
     if isinstance(result, dict):
         result = [result]
     return np.array([
