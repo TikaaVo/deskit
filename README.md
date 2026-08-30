@@ -28,7 +28,7 @@ concept that there are regions of feature space where certain models perform par
 so every base model can be an expert in a different region.
 Only the most competent, or an ensemble of the most competent models is selected for the prediction.
 
-Through empirical studies, DES has been shown to perform best on small-sized, imbalanced, or 
+Through empirical studies, DES has been shown to perform best on representative, diverse, and 
 heterogeneous datasets, as well as non-stationary data (concept drift), models that haven't perfected a dataset, 
 and when used on an ensemble of models with differing architectures and perspectives.
 
