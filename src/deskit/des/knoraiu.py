@@ -36,7 +36,7 @@ class KNORAIU(KNNBase):
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, preset='balanced', distance_metric='euclidean', normalization='bestrel', **kwargs):
+                 threshold=0.5, preset='exact', distance_metric='euclidean', normalization='bestrel', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         norm_name, norm_fn = resolve_norm(normalization)
         finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)

@@ -28,7 +28,7 @@ class LWSEU(PredictBase):
         Ignores closest neighbor with a negligible distance to avoid overfitting.
     """
 
-    def __init__(self, task, k=10, preset='balanced', distance_metric='euclidean', **kwargs):
+    def __init__(self, task, k=10, preset='exact', distance_metric='euclidean', **kwargs):
         self.task    = task
         self.k       = k
         self._finder = make_finder(preset, k, distance_metric=distance_metric, **kwargs)
