@@ -73,5 +73,7 @@ available presets, and all configuration parameters.
 
 ## Benchmark
 
-[Benchmark results](benchmark.md) across seven datasets comparing deskit algorithms against
+- [Benchmark results](benchmark.md) across seven datasets comparing deskit algorithms against
 simple averaging and the best single model in the pool.
+- [Benchmark regression results](benchmark_regression.md) across 35 datasets comparing deskit algorithms against
+simple averaging, best single, and stacking.

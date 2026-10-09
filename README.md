@@ -231,6 +231,31 @@ passed features either need to be run through a feature extractor beforehand, su
 
 ## Benchmark results
 
+### Regression-specific benchmark
+
+To benchmark how the DEWS family specifically performs on regression tasks, since this was an identified gap in DES
+literature and implementations, DEWS was benchmarked against single best, simple average, and various stacking baselines.
+For this benchmark, 35 datasets were used, pulled from the OpenML-CTR23 regression suite, benchmarked with 10 folds and 3 seeds.
+All the methods were tuned with the exact same Random Search budget of 50. The full results can be seen in the [documentation](https://TikaaVo.github.io/deskit/benchmark_regression).
+
+`ΔSB` = % improvement over `SingleBest` (positive = better).
+`Gap` = DEWS ΔSB − best non-DEWS ΔSB (negative = DEWS behind non-DEWS).
+
+| Pool | DEWS mean | DEWS ΔSB | Best non-DEWS |
+|---|---|---:|---:|---|---:|---:|
+| Bagging-DT | 7798.74 | +32.23% | ValWeightedAverage |
+| Bagging-KNN | 9341.37 | +9.34% | ValWeightedAverage |
+| Subspace-DT | 8354.85 | +27.43% | RidgeStacking |
+| Subspace-KNN | 8704.69 | +12.64% | StackingRF |
+
+`SingleBest` = 0% baseline. "Best non-DEWS" excludes all DEWS variants and `Oracle`;
+it may include stacking, simple/weighted averaging, OLA, or `SingleBest` itself.
+
+As evident, DEWS does best compared to competition in Bagging pools, achieving up to a 32% improvement over single best, and 
+beats stacking and averaging baselines, showing that in some cases, DES can have performance advantages.
+
+### General heterogeneous benchmark
+
 20-seed benchmark (seeds 0–19) on standard sklearn and OpenML datasets. "Best Single" is the best
 individual model selected on the validation set. "Simple Average" is uniform
 equal-weight blending, included as a baseline.
@@ -244,7 +269,7 @@ This pool was selected for having variability in architectures while avoiding a 
 
 deskit algorithms tested: OLA, DEWS-U, DEWS-I, DEWS-T, DEWS-V, DEWS-IV, LWSE-U, LWSE-I, KNORA-U, KNORA-E, KNORA-IU.
 
-### Regression (MAE, lower is better)
+#### Regression (MAE, lower is better)
 
 Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
@@ -267,7 +292,7 @@ and classification-like (like in Abalone).
 
 DEWS-I and LWSE-I show the largest improvements on their respective datasets.
 
-### Classification (Accuracy, higher is better)
+#### Classification (Accuracy, higher is better)
 
 Pool: KNN, Decision Tree, Gaussian NB, SVM-RBF, Logistic Regression.
 
@@ -283,7 +308,7 @@ Pool: KNN, Decision Tree, Gaussian NB, SVM-RBF, Logistic Regression.
 
 deskit beats or matches best single and simple averaging on 4/5 classification datasets.
 
-### Speed (mean ms fit + predict, 20 seeds, all tested algorithms combined)
+#### Speed (mean ms fit + predict, 20 seeds, all tested algorithms combined)
 
 Consider that usually it is recommended to only use one algorithm at a time, this benchmark ran eleven of them at the
 same time, so with a single one runtime is expected to be about 11x faster. For this benchmark, `preset='balanced'` was used,

@@ -68,7 +68,7 @@ The initialization function accepts the following parameters:
 | Parameter     | Type | Default                               | Description                                                                                                                                                     |
 |---------------|---|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `task`        | str | —                                     | `"classification"` or `"regression"`                                                                                                                            |
-| `metric`      | str or callable | —                                     | Scoring function per sample. Built-ins: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_correct`. Custom callables `(y_true, y_pred) -> float` are accepted |
+| `metric`      | str or callable | —                                     | Scoring function per sample. Built-ins: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_correct`. Custom callables `(y_true, y_pred) -> float` are accepted. Alternatively, pass None, in which case you pass the scores instead of the predictions in val_preds. |
 | `mode`        | str | —                                     | `"max"` if higher is better, `"min"` if lower                                                                                                                   |
 | `k`           | int | 10                                    | Number of neighbours                                                                                                                                            |
 | `threshold`   | float | 0.5                                   | Competence cutoff                                                                                                                                               |
@@ -96,6 +96,8 @@ The `fit` function accepts three parameters in every case, being:
 - X_val: Validation features
 - y_val: Validation labels
 - val_preds: A dictionary of model predictions, structured in {model_name: [prediction array]} pairs. For each prediction, raw prediction values are accepted, but for classification tasks, deskit also accepts confidence score arrays (for example, [0.1, 0.7, 0.2]) with the use of log_loss. For classification tasks utilizing probability arrays, the arrays must be 2D with the shape (n_samples, n_classes). For hard predictions or regression values, they should be 1D with the shape (n_samples,).
+
+Note: if metric=None, y_val should be excluded and val_preds becomes {model_name: [score_array]}.
 
 Ensure that all the arrays used are ordered the same way, i.e. when considering the point `X_val[i]`, the correct label was `y_val[i]`, and model `model_name` predicted `val_preds[model_name][i]`.
 
