@@ -1203,7 +1203,7 @@ from deskit.des.knorau import KNORAU
 <td><code>metric</code></td>
 <td>str or callable</td>
 <td>—</td>
-<td>Scoring function per sample. Built-ins: <code>accuracy</code>, <code>mae</code>, <code>mse</code>, <code>rmse</code>, <code>log_loss</code>, <code>prob_correct</code>. Custom callables <code>(y_true, y_pred) -&gt; float</code> are accepted</td>
+<td>Scoring function per sample. Built-ins: <code>accuracy</code>, <code>mae</code>, <code>mse</code>, <code>rmse</code>, <code>log_loss</code>, <code>prob_correct</code>. Custom callables <code>(y_true, y_pred) -&gt; float</code> are accepted. Alternatively, pass None, in which case you pass the scores instead of the predictions in val_preds.</td>
 </tr>
 <tr>
 <td><code>mode</code></td>
@@ -1284,6 +1284,7 @@ from deskit.des.knorau import KNORAU
 <li>y_val: Validation labels</li>
 <li>val_preds: A dictionary of model predictions, structured in {model_name: [prediction array]} pairs. For each prediction, raw prediction values are accepted, but for classification tasks, deskit also accepts confidence score arrays (for example, [0.1, 0.7, 0.2]) with the use of log_loss. For classification tasks utilizing probability arrays, the arrays must be 2D with the shape (n_samples, n_classes). For hard predictions or regression values, they should be 1D with the shape (n_samples,).</li>
 </ul>
+<p>Note: if metric=None, y_val should be excluded and val_preds becomes {model_name: [score_array]}.</p>
 <p>Ensure that all the arrays used are ordered the same way, i.e. when considering the point <code>X_val[i]</code>, the correct label was <code>y_val[i]</code>, and model <code>model_name</code> predicted <code>val_preds[model_name][i]</code>.</p>
 <h2 id="step-4-get-the-predictions">Step 4: Get the predictions</h2>
 <p>deskit allows two variants of prediction, either automatic ensembling or returning weights.</p>
